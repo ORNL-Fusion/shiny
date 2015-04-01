@@ -15,13 +15,14 @@ pro heat2d
 	y2D = transpose(rebin(y,nY,nX))
 	dY = y[1]-y[0]
 	
-
-	T = cos(sqrt(x2D^2+y2D^2)*3)>0 ; initial condition
+	_s = x2D^2+y2D^2
+	_sig = 0.05
+	T = exp(-_s/_sig^2) ; initial condition
 	F = T*0
 	kx = fltArr(nX,nY) + 0.06 ; diffusion coefficent
-	ky = fltArr(nX,nY) + 0.22 ; diffusion coefficent
+	ky = fltArr(nX,nY) + 20.42 ; diffusion coefficent
 
-	cfl = 4 ; must be < 0.5 for this shitty explicit forward Euler time differencing
+	cfl = 40 ; must be < 0.5 for this shitty explicit forward Euler time differencing
 
 	; seems to work fine for large CFL numbers here, not sure why exactly
 
