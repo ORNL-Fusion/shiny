@@ -1,4 +1,4 @@
-pro heat1d
+function heat1d, s, t, k
 
 	nPts = 100
 	sMin = 0
@@ -37,5 +37,5 @@ pro heat1d
 		T[-1] = (+2*T[-2] - 0.5*T[-3])/(+1.5) ; dT/dS = 0 second order accurate backward difference
 
 	endfor	
-stop
+
 end
