@@ -1,7 +1,7 @@
 pro heat2d
 
-	nX = 40
-	nY = 20
+	nX = 100
+	nY = 140
 
 	eqdskFileName = 'g122976.03021'
 	g = readgeqdsk(eqdskFileName,/noTor)
@@ -37,11 +37,11 @@ pro heat2d
 
 	nT = 500L
 
-	oVid = IDLffVideoWrite('heat2d.webm')
 	width = 400
 	height = 400
-	fps = 20 
-	vidStream = oVid.AddVideoStream(width, height, fps)
+	;oVid = IDLffVideoWrite('heat2d.webm')
+	;fps = 20 
+	;vidStream = oVid.AddVideoStream(width, height, fps)
 
 	xRange=[xMin,xMax]
 	yRange=[yMin,yMax]
@@ -53,37 +53,230 @@ pro heat2d
 			dimensions=[width,height], $
 			/fill, c_value=levels, rgb_indices=colors,$
 			rgb_table=3,yRange=yRange,xRange=xRange)
-	psi_levels = (fIndGen(10)+1)/10
-	c=contour(g.psizr, g.r, g.z,/over,color='w',n_levels = 200)
+	psi_min = -0.5
+	psi_max = -0.49
+	psi_n = 30
+	psi_levels = [-1,-0.9,-0.8,-0.75,-0.72,-0.71,-0.705]
+	c=contour(alog(-g.psizr), g.r, g.z,/over,color='w',c_value = psi_levels)
 
 	; Solve using the 1D set
 
-	for i=0,nX-1 do begin
-		for j=0,nY-1 do begin
+	fl_nX = 10
+	fl_nY = 20
+
+	fl_size = 0.15
+
+	fl_xMin = r0-fl_size 
+	fl_xMax = r0+fl_size
+	fl_x = fIndGen(fl_nX)/(fl_nX-1)*(fl_xMax-fl_xMin)+fl_xMin
+	fl_x2D = rebin(fl_x,fl_nX,fl_nY)
+	fl_dX = fl_x[1]-fl_x[0]
+
+	fl_yMin = z0-fl_size 
+	fl_yMax = z0+fl_size
+	fl_y = fIndGen(fl_nY)/(fl_nY-1)*(fl_yMax-fl_yMin)+fl_yMin
+	fl_y2D = transpose(rebin(fl_y,fl_nY,fl_nX))
+	fl_dY = fl_y[1]-fl_y[0]
+	
+	_n = 100
+	dS = 0.1
+	__s = fIndGen(_n)*dS
+	__s = [reverse(-__s[1:-1]),__s[0:-1]]
+
+    _b = { bR : g.bR, $
+		bt : g.bPhi, $
+		bz : g.bz, $
+		r : g.r, $
+		z : g.z, $
+		rsize : g.r[-1]-g.r[0], $
+		zsize : g.z[-1]-g.z[0], $
+		nR : n_elements(g.r), $
+		nZ : n_elements(g.z)}   
+
+	fl_T = fltArr(fl_nX,fl_nY)
+
+	bndry_x = [xMin,xMax,xMax,xMin,xMin]
+	bndry_y = [yMin,yMin,yMax,yMax,yMin]
+	boundary = Obj_New('IDLanROI',bndry_x,bndry_y)
+
+	for i=0,fl_nX-1 do begin
+		for j=0,fl_nY-1 do begin
+
+			s = __s
+
+			print, i, j
 
 			; generate the field line
 
-			_n = 100
-			dS = 0.01
-			ThisPoint = [x[i],0,y[j]]
-			g=readgeqdsk(eqdskFileName,/noTor, $
-				FieldLineIn = ThisPoint, $
-		    	FieldLineTraceDir = 1, $
-    			FieldLineTraceDS = dS, $
-    			FieldLineTraceNSteps = _n, $
-				FieldLine_CYL = _line1)
+			ThisPoint = [fl_x[i],0,fl_y[j]]
 
-			g=readgeqdsk(eqdskFileName,/noTor, $
-				FieldLineIn = ThisPoint, $
-		    	FieldLineTraceDir = -1, $
-    			FieldLineTraceDS = dS, $
-    			FieldLineTraceNSteps = _n, $
-				FieldLine_CYL = _line2)
-		
-			fLine = [[reverse(_line1[*,0:-2],2)],[_line2[*,1:-2]]]
-	
+			_line1 = dlg_fieldLineTrace(_b,ThisPoint,$
+					dir = -1, dS=dS, nS=_n )
+			_line2 = dlg_fieldLineTrace(_b,ThisPoint,$
+					dir = +1, dS=dS, nS=_n )
+
+			fLine_CYL = [[reverse(_line1[*,0:-2],2)],[_line2[*,1:-2]]]
+
+			; Check intersection with boundary
+
+			isInsideDomain = boundary->ContainsPoints(fLine_CYL[0,*],fLine_CYL[2,*])
+			iiOutside = where(isInsideDomain eq 0, iiOutsideCnt)
+			iiThisPt = _n-1
+
+			; Extract that part of the line within the boundary
+			; accounting for craziness, multiple intersections, etc
+
+			nF = n_elements(fLine_CYL[0,*])
+
+			iin = !null
+			_cont = 1
+			_ii = 1
+			while _cont eq 1 do begin
+				if iiThisPt-_ii lt 0 then begin
+						_cont = 0
+				endif else begin
+					if isInsideDomain[iiThisPt-_ii] then iin=[iin,iiThisPt-_ii] else _cont = 0
+					++_ii
+				endelse
+			endwhile
+
+			iip = !null
+			_cont = 1
+			_ii = 1
+			while _cont eq 1 do begin
+				if iiThisPt+_ii ge nF then begin
+						_cont = 0
+				endif else begin
+					if isInsideDomain[iiThisPt+_ii] then iip=[iip,iiThisPt+_ii] else _cont = 0
+					++_ii
+				endelse
+			endwhile
+
+			iiUse = [reverse(iin),iiThisPt,iip]
+			fLine_CYL_all = fLine_CYL
+			fLine_CYL = fLine_CYL[*,iiUse]
+			s_all = s
+			s = s[iiUse]
+			sLeft = s[0]
+			sRight = s[-1]
+			n_fl = n_elements(fLine_CYL[0,*])
+
+			LeftEnd = [fLine_CYL[0,0],fLine_CYL[2,0]]	
+			RightEnd = [fLine_CYL[0,-1],fLine_CYL[2,-1]]	
+
+			p=plot(fLine_CYL_all[0,*],fLine_CYL_all[2,*],/over,thick=2)
+			p=plot(fLine_CYL[0,*],fLine_CYL[2,*],/over,color='b')
+
+			; Now find actual intersection points with the wall(s)
+
+			ReGrid = 0
+
+			if min(iiUse) ne 0 then begin ; left end needs fixing 
+
+				print, 'Fixing left end'
+
+				ReGrid = 1
+
+				iiOut = min(iiUse)-1
+				iiIn = min(iiUse)
+				x1 = fLine_CYL_all[0,iiOut]
+				y1 = fLine_CYL_all[2,iiOut]
+				x2 = fLine_CYL_all[0,iiIn]
+				y2 = fLine_CYL_all[2,iiIn]
+
+				LeftEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y)
+
+				t2 = fLine_CYL_all[1,iiIn]
+				; this is a bit of a hack, but it's pretty close
+				tLeft = interpol(fLine_CYL_all[1,iiOut:iiIn],[x1,x2],LeftEnd[0])
+
+				_x1 = LeftEnd[0]*cos(tLeft)
+				_y1 = LeftEnd[0]*sin(tLeft)
+				_z1 = LeftEnd[1]
+
+				_x2 = x2*cos(t2)
+				_y2 = x2*sin(t2)
+				_z2 = y2
+
+				sExtraBit = sqrt ( (_x2-_x1)^2+(_y2-_y1)^2+(_z2-_z1)^2 ) 
+
+				sLeft = s_all[iiIn] - sExtraBit
+
+			endif 
+
+			if max(iiUse) ne n_elements(fLine_CYL_all[0,*])-1 then begin ; right end needs fixing 
+
+				print, 'Fixing right end'
+
+				ReGrid = 1
+
+				iiOut = max(iiUse)+1
+				iiIn = max(iiUse)
+				x1 = fLine_CYL_all[0,iiOut]
+				y1 = fLine_CYL_all[2,iiOut]
+				x2 = fLine_CYL_all[0,iiIn]
+				y2 = fLine_CYL_all[2,iiIn]
+
+				RightEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y)
+
+				t2 = fLine_CYL_all[1,iiIn]
+				tRight = interpol(fLine_CYL_all[1,iiIn:iiOut],[x2,x1],RightEnd[0])
+
+				_x1 = RightEnd[0]*cos(tRight)
+				_y1 = RightEnd[0]*sin(tRight)
+				_z1 = RightEnd[1]
+
+				_x2 = x2*cos(t2)
+				_y2 = x2*sin(t2)
+				_z2 = y2
+
+				sExtraBit = sqrt ( (_x2-_x1)^2+(_y2-_y1)^2+(_z2-_z1)^2 ) 
+
+				sRight = s_all[iiIn] + sExtraBit
+
+			endif 
+
+			; Interpolate field line to new constant dS such that it ends at the boundary(s)
+
+			if ReGrid then begin
+
+				sNew = fIndGen(n_fl)/(n_fl-1)*(sRight-sLeft)+sLeft
+
+				_fLine_r = interpol(fLine_CYL_all[0,*],s_all,sNew,/spline)
+				_fLine_z = interpol(fLine_CYL_all[2,*],s_all,sNew,/spline)
+
+				s = sNew
+				fLine_CYL[0,*] = _fLine_r
+				fLine_CYL[2,*] = _fLine_z
+
+			endif
+
+			print, LeftEnd, fLine_CYL[0,0],fLine_CYL[2,0]
+			print, RightEnd, fLine_CYL[0,-1],fLine_CYL[2,-1]
+
+			; Get T along said field line
+
+    		_T  = interpolate ( T, ( fLine_CYL[0,*] - x[0] ) / (xMax-xMin) * (nX-1.0), $
+        		( fLine_CYL[2,*] - y[0] ) / (yMax-yMin) * (nY-1.0), cubic = -0.5 )
+
+			k = fltArr(n_elements(s)) + 0.06 ; diffusion coefficent
+			nT = 35000
+			_T = heat1d(s,_T,k,nT,cfl=0.4,plot=0) 
+
+			fl_T[i,j] = interpol(_T,s,0,/spline) ; get T at the actual point
+
 		endfor
+		
 	endfor
+
+	flyRange=[fl_yMin,fl_yMax]
+	flxRange=[fl_xMin,fl_xMax]
+	c=contour(fl_T, fl_x, fl_y, aspect_ratio=1.0, $
+			dimensions=[width,height], $
+			/fill, c_value=levels, rgb_indices=colors,$
+			rgb_table=3,yRange=flyRange,xRange=flxRange)
+	c=contour(alog(-g.psizr), g.r, g.z,/over,color='w', c_value=psi_levels)
+
 stop
 
 	; Solve the 2D problem directly on a Cartesian grid
