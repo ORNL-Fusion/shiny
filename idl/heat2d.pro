@@ -6,7 +6,7 @@ pro heat2d
 	eqdskFileName = 'g122976.03021'
 	g = readgeqdsk(eqdskFileName,/noTor)
 
-	size = 0.2
+	size = 0.19
 	r0 = g.rmaxis
 	z0 = 0.0
 
@@ -62,9 +62,9 @@ pro heat2d
 	; Solve using the 1D set
 
 	fl_nX = 10
-	fl_nY = 20
+	fl_nY = 10
 
-	fl_size = 0.15
+	fl_size = size
 
 	fl_xMin = r0-fl_size 
 	fl_xMax = r0+fl_size
@@ -78,8 +78,8 @@ pro heat2d
 	fl_y2D = transpose(rebin(fl_y,fl_nY,fl_nX))
 	fl_dY = fl_y[1]-fl_y[0]
 	
-	_n = 100
-	dS = 0.1
+	_n = 400
+	dS = 0.3
 	__s = fIndGen(_n)*dS
 	__s = [reverse(-__s[1:-1]),__s[0:-1]]
 
@@ -99,8 +99,8 @@ pro heat2d
 	bndry_y = [yMin,yMin,yMax,yMax,yMin]
 	boundary = Obj_New('IDLanROI',bndry_x,bndry_y)
 
-	for i=0,fl_nX-1 do begin
-		for j=0,fl_nY-1 do begin
+	for i=1,fl_nX-2 do begin ; don't do the boundary pts
+		for j=1,fl_nY-2 do begin
 
 			s = __s
 
@@ -166,6 +166,8 @@ pro heat2d
 
 			p=plot(fLine_CYL_all[0,*],fLine_CYL_all[2,*],/over,thick=2)
 			p=plot(fLine_CYL[0,*],fLine_CYL[2,*],/over,color='b')
+			p=plot([1,1]*ThisPoint[0],[1,1]*ThisPoint[2],symbol='o',/sym_filled,/over)
+
 
 			; Now find actual intersection points with the wall(s)
 
@@ -260,7 +262,7 @@ pro heat2d
         		( fLine_CYL[2,*] - y[0] ) / (yMax-yMin) * (nY-1.0), cubic = -0.5 )
 
 			k = fltArr(n_elements(s)) + 0.06 ; diffusion coefficent
-			nT = 35000
+			nT = 5000
 			_T = heat1d(s,_T,k,nT,cfl=0.4,plot=0) 
 
 			fl_T[i,j] = interpol(_T,s,0,/spline) ; get T at the actual point
