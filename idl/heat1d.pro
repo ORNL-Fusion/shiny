@@ -31,7 +31,7 @@ function heat1d, s, T, k, nT, cfl = _cfl, plot = _plot
 
 		T[1:-2] = $
 				T[1:-2] $
-				+ dt * k[1:-2] * dt / dS^2  * ( T[0:-3] - 2*T[1:-2] + T[2:-1] ) $
+				+ k[1:-2] * dt / dS^2  * ( T[0:-3] - 2*T[1:-2] + T[2:-1] ) $
 				+ dt * F[1:-2]
 
 		; Apply BCs

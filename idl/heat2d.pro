@@ -1,64 +1,299 @@
+pro grad, f,x,y,gradX,gradY
+
+    nX = n_elements(x)
+    nY = n_elements(y)
+
+    hx = x[1]-x[0]
+    hy = y[1]-y[0]
+
+    gradX = fltArr(nX,nY)
+    gradY = fltArr(nX,nY)
+
+    for i=0,nX-1 do begin
+        for j=0,nY-1 do begin
+
+            ; df_dX 
+
+            if i gt 0 and i lt nX-1 then begin
+                gradX[i,j] = (-f[i-1,j]+f[i+1,j])/(2*hx)
+            endif
+
+            if i eq 0 then begin
+                gradX[i,j] = (-f[i,j]+f[i+1,j])/(hx)
+            endif
+
+            if i eq nX-1 then begin
+                gradX[i,j] = (-f[i-1,j]+f[i,j])/(hx)
+            endif
+
+            ; df_dY
+
+            if j gt 0 and j lt nY-1 then begin
+                gradY[i,j] = (-f[i,j-1]+f[i,j+1])/(2*hy)
+            endif
+
+            if j eq 0 then begin
+                gradY[i,j] = (-f[i,j]+f[i,j+1])/(hy)
+            endif
+
+            if j eq nY-1 then begin
+                gradY[i,j] = (-f[i,j-1]+f[i,j])/(hy)
+            endif
+
+
+        endfor
+    endfor
+
+end
+
+function laplacian, f, x, y
+
+    nX = n_elements(x)
+    nY = n_elements(y)
+
+    hx = x[1]-x[0]
+    hy = y[1]-y[0]
+
+    lapX = fltArr(nX,nY)
+    lapY = fltArr(nX,nY)
+
+    for i=0,nX-1 do begin
+        for j=0,nY-1 do begin
+
+            ; d2f_dX 
+
+            if i gt 0 and i lt nX-1 then begin
+                lapX[i,j] = (+f[i-1,j] - 2*f[i,j] + f[i+1,j])/(hx^2)
+            endif
+
+            if i eq 0 then begin
+                lapX[i,j] = (+f[i,j] -2*f[i+1,j] + f[i+2,j])/(hx^2)
+            endif
+
+            if i eq nX-1 then begin
+                lapX[i,j] = (+f[i-2,j] -2*f[i-1,j] + f[i,j])/(hx^2)
+            endif
+
+            ; d2f_dY
+
+            if j gt 0 and j lt nY-1 then begin
+                lapY[i,j] = (+f[i,j-1] - 2*f[i,j] + f[i,j+1])/(hy^2)
+            endif
+
+            if j eq 0 then begin
+                lapY[i,j] = (+f[i,j] -2*f[i,j+1] + f[i,j+2])/(hy^2)
+            endif
+
+            if j eq nY-1 then begin
+                lapY[i,j] = (+f[i,j-2] -2*f[i,j-1] + f[i,j])/(hy^2)
+            endif
+
+        endfor
+    endfor
+
+    return, lapX + lapY
+
+end
+
+
 pro heat2d
 
 	nX = 100
-	nY = 140
+	nY = 101
 
-	eqdskFileName = 'g122976.03021'
-	g = readgeqdsk(eqdskFileName,/noTor)
+    eqdsk = 0
+    if eqdsk then begin
+	    eqdskFileName = 'g122976.03021'
+	    g = readgeqdsk(eqdskFileName,/noTor)
 
-	size = 0.19
-	r0 = g.rmaxis
-	z0 = 0.0
+        psi = -g.psizr
 
-	xMin = r0-size 
-	xMax = r0+size
-	x = fIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
-	x2D = rebin(x,nX,nY)
-	dX = x[1]-x[0]
+	    size = 0.19
+	    r0 = g.rmaxis
+	    z0 = 0.0
 
-	yMin = z0-size 
-	yMax = z0+size
-	y = fIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
-	y2D = transpose(rebin(y,nY,nX))
-	dY = y[1]-y[0]
+	    xMin = r0-size 
+	    xMax = r0+size
+	    x = fIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
+	    x2D = rebin(x,nX,nY)
+	    dX = x[1]-x[0]
+
+	    yMin = z0-size 
+	    yMax = z0+size
+	    y = fIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
+	    y2D = transpose(rebin(y,nY,nX))
+	    dY = y[1]-y[0]
+
+		_s = sqrt((x2D-r0)^2+(y2D-z0)^2)
+	    _sig = 0.5
+	    T = exp(-_s/_sig^2) ; initial condition
+	    F = T*0
+	    kx = fltArr(nX,nY) + 0.06 ; diffusion coefficent
+	    ky = fltArr(nX,nY) + 20.42 ; diffusion coefficent
+
+    endif else begin
+
+        closedCase = 1
+
+        if closedCase then begin
+            x0 = 0
+            y0 = 0
+        endif else begin
+            x0 = -0.5 
+            y0 = -0.5
+        endelse
+
+        xMin = -0.5 
+	    xMax = +0.5
+	    x = fIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
+	    x2D = rebin(x,nX,nY)
+	    dX = x[1]-x[0]
+
+	    yMin = -0.5 
+	    yMax = +0.5
+	    y = fIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
+	    y2D = transpose(rebin(y,nY,nX))
+	    dY = y[1]-y[0]
 	
-	_s = sqrt((x2D-r0)^2+(y2D-z0)^2)
-	_sig = 0.5
-	T = exp(-_s/_sig^2) ; initial condition
-	F = T*0
-	kx = fltArr(nX,nY) + 0.06 ; diffusion coefficent
-	ky = fltArr(nX,nY) + 20.42 ; diffusion coefficent
+        psi = sin(2*!pi*x2D) * cos(2*!pi*y2D)
+        grad, psi, x, y, gradX, gradY
+        lap = laplacian( psi, x, y)
 
-	cfl = 40 ; must be < 0.5 for this shitty explicit forward Euler time differencing
+        bx = -gradY
+        by = +gradX
+        bz = bx*0
 
-	; seems to work fine for large CFL numbers here, not sure why exactly
+        ; Generate kx / ky from kPer / kPar
 
-	dt = min( [cfl * dX^2 / kx, cfl * dY^2 / ky] )
+        kPer = 1e2
+        kPar = kPer*1e3
 
-	nT = 500L
+        bMag = sqrt(bx^2+by^2+bz^2) 
+        bxU = bx / bMag
+        byU = by / bMag
+        bzU = bz / bMag
+
+        kx = fltArr(nX,nY)
+        ky = fltArr(nX,nY)
+
+        for i=0,nX-1 do begin
+            for j=0,nY-1 do begin
+        
+                parU = [bxU[i,j],byU[i,j],bzU[i,j]]
+                zU = [0,0,1]
+                perU = crossp(parU,zU)
+                perU = perU / sqrt(perU[0]^2+perU[1]^2+perU[2]^2)
+
+                kx[i,j] = 0 
+                kx[i,j] = kx[i,j] + abs(kPer * perU[0])
+                kx[i,j] = kx[i,j] + abs(kPar * parU[0])
+
+                ky[i,j] = 0
+                ky[i,j] = ky[i,j] + abs(kPer * perU[1])
+                ky[i,j] = ky[i,j] + abs(kPar * parU[1])
+
+            endfor
+        endfor 
+
+        Q = -kPer * lap
+        Q_sovinec = 2*!pi^2*cos(!pi*x2D)*sin(!pi*y2D)
+        ;Q[*] = 0
+
+        r = sqrt((x2D-x0)^2+(y2D-y0)^2)
+        T = (1-r^3)*0
+        TSolution = sin(2*!pi*x2D) * cos(2*!pi*y2D)
+
+        c=contour(psi,x,y,layout=[3,2,1],/fill,title='psi')
+        c=contour(TSolution,x,y,layout=[3,2,2],/current,/fill,title='T')
+        c=contour(kx,x,y,layout=[3,2,3],/current,/fill,title='kx',rgb_table=50)
+        c=contour(ky,x,y,layout=[3,2,4],/current,/fill,title='ky',rgb_table=50)
+        c=contour(Q,x,y,layout=[3,2,5],/current,/fill,title='Q')
+        v=vector(bx,by,x,y,layout=[3,2,6],/current,auto_color=1,rgb_table=10,auto_subsample=1,title='B')
+
+    endelse
+
+
+	CFL = 0.9 ; must be < 1 for this shitty explicit forward Euler time differencing
+    _D = max(abs([kx,ky]))
+    dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
+
+	nT = 15000L
 
 	width = 400
 	height = 400
-	;oVid = IDLffVideoWrite('heat2d.webm')
-	;fps = 20 
-	;vidStream = oVid.AddVideoStream(width, height, fps)
+	oVid = IDLffVideoWrite('heat2d.webm')
+	fps = 4 
+	vidStream = oVid.AddVideoStream(width, height, fps)
 
-	xRange=[xMin,xMax]
-	yRange=[yMin,yMax]
+	xRange=[x[0],x[-1]]
+	yRange=[y[0],y[-1]]
 	nLevs = 11
-	scale = max(T)
-	levels = fIndGen(nLevs)/(nLevs-1)*scale
-	colors = reverse(bytScl(levels, top=253)+1)
-	c=contour(T, x, y, aspect_ratio=1.0, $
-			dimensions=[width,height], $
-			/fill, c_value=levels, rgb_indices=colors,$
-			rgb_table=3,yRange=yRange,xRange=xRange)
-	psi_min = -0.5
-	psi_max = -0.49
-	psi_n = 30
-	psi_levels = [-1,-0.9,-0.8,-0.75,-0.72,-0.71,-0.705]
-	c=contour(alog(-g.psizr), g.r, g.z,/over,color='w',c_value = psi_levels)
+	;scale = max(abs(T))
+	;levels = fIndGen(nLevs)/(nLevs-1)*scale
+	;colors = reverse(bytScl(levels, top=253)+1)
+	;c=contour(T, x, y, aspect_ratio=1.0, $
+	;		dimensions=[width,height], $
+	;		/fill, c_value=levels, rgb_indices=colors,$
+	;		rgb_table=3,yRange=yRange,xRange=xRange,/buffer)
+    c=contour(T,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=50)
 
+    frame = c.CopyWindow()
+	!null = oVid.put(vidStream, frame)
+	
+	; Solve the 2D problem directly on a Cartesian grid
+	
+	for _t = 0, nT - 1 do begin
+
+		; plot time evolving solution at a subset of times
+		if _t mod 100 eq 0 then begin
+			if _t gt 0 then c.erase
+            print, _t, nT    
+            c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=50)
+	        ;scale = max(abs(T-mean(T)))
+	        ;levels = fIndGen(nLevs)/(nLevs-1)*scale+mean(T)
+	        ;colors = (bytScl(levels-mean(T), top=253)+1)
+			;c=contour(T, x, y, aspect_ratio=1.0, $
+			;		dimensions=[width,height], $
+			;		/fill, c_value=levels, rgb_indices=colors,$
+			;		rgb_table=3,/current,/buffer)
+			;c=contour(-T, x, y, aspect_ratio=1.0, $
+			;		dimensions=[width,height], $
+			;		/fill, c_value=levels, rgb_indices=colors,$
+			;		rgb_table=1,/current,/buffer,/over)
+			frame = c.CopyWindow()
+			!null = oVid.put(vidStream, frame)
+		endif
+
+		T[1:-2,1:-2] = $
+				T[1:-2,1:-2] $
+				+ kx[1:-2,1:-2] * dt / dX^2  * ( T[0:-3,1:-2] - 2*T[1:-2,1:-2] + T[2:-1,1:-2] ) $
+				+ ky[1:-2,1:-2] * dt / dY^2  * ( T[1:-2,0:-3] - 2*T[1:-2,1:-2] + T[1:-2,2:-1] ) $
+				+ dt * Q[1:-2,1:-2]
+
+		;; Apply BCs
+
+		;; left side : dT/dX = 0 second order accurate forward difference
+		;T[0,*] = (-2*T[1,*] + 0.5*T[2,*])/(-1.5) ;  
+
+		;; right side : dT/dX = 0 second order accurate backward difference
+		;T[-1,*] = (+2*T[-2,*] - 0.5*T[-3,*])/(+1.5) 
+
+		;; top : dT/dY = 0 second order accurate forward difference
+		;T[*,0] = (-2*T[*,1] + 0.5*T[*,2])/(-1.5)  
+
+		;; bottom : dT/dY = 0 second order accurate backward difference
+		;T[*,-1] = (+2*T[*,-2] - 0.5*T[*,-3])/(+1.5) ; 
+
+        T[0,*] = TSolution[0,*]
+        T[-1,*] = TSolution[-1,*]
+        T[*,0] = TSolution[*,0]
+        T[*,-1] = TSolution[*,-1]
+
+
+	endfor	
+
+	oVid.cleanup
+stop
 	; Solve using the 1D set
 
 	fl_nX = 10
@@ -110,10 +345,8 @@ pro heat2d
 
 			ThisPoint = [fl_x[i],0,fl_y[j]]
 
-			_line1 = dlg_fieldLineTrace(_b,ThisPoint,$
-					dir = -1, dS=dS, nS=_n )
-			_line2 = dlg_fieldLineTrace(_b,ThisPoint,$
-					dir = +1, dS=dS, nS=_n )
+			_line1 = dlg_fieldLineTrace(_b,ThisPoint, dir = -1, dS=dS, nS=_n )
+			_line2 = dlg_fieldLineTrace(_b,ThisPoint, dir = +1, dS=dS, nS=_n )
 
 			fLine_CYL = [[reverse(_line1[*,0:-2],2)],[_line2[*,1:-2]]]
 
@@ -281,44 +514,5 @@ pro heat2d
 
 stop
 
-	; Solve the 2D problem directly on a Cartesian grid
-	
-	for _t = 0, nT - 1 do begin
-
-		; plot time evolving solution at a subset of times
-		if _t mod 5 eq 0 then begin
-			if _t gt 0 then c.erase
-
-			c=contour(T, x, y, aspect_ratio=1.0, /buffer, $
-					dimensions=[width,height], $
-					/fill, c_value=levels, rgb_indices=colors,$
-					rgb_table=3)
-			frame = c.CopyWindow()
-			!null = oVid.put(vidStream, frame)
-		endif
-
-		T[1:-2,1:-2] = $
-				T[1:-2,1:-2] $
-				+ dt * kx[1:-2] * dt / dX^2  * ( T[0:-3,1:-2] - 2*T[1:-2,1:-2] + T[2:-1,1:-2] ) $
-				+ dt * ky[1:-2] * dt / dY^2  * ( T[1:-2,0:-3] - 2*T[1:-2,1:-2] + T[1:-2,2:-1] ) $
-				+ dt * F[1:-2]
-
-		;; Apply BCs
-
-		;; left side : dT/dX = 0 second order accurate forward difference
-		;T[0,*] = (-2*T[1,*] + 0.5*T[2,*])/(-1.5) ;  
-
-		;; right side : dT/dX = 0 second order accurate backward difference
-		;T[-1,*] = (+2*T[-2,*] - 0.5*T[-3,*])/(+1.5) 
-
-		;; top : dT/dY = 0 second order accurate forward difference
-		;T[*,0] = (-2*T[*,1] + 0.5*T[*,2])/(-1.5)  
-
-		;; bottom : dT/dY = 0 second order accurate backward difference
-		;T[*,-1] = (+2*T[*,-2] - 0.5*T[*,-3])/(+1.5) ; 
-
-	endfor	
-
-	oVid.cleanup
 stop
 end
