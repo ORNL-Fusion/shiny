@@ -1,6 +1,6 @@
 ; Find intersection point of a line [(x1,y1),(x2,y2)] and a polygon
 
-function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y 
+function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y, crash=crash
 
 	px = !null
 	py = !null
@@ -20,11 +20,23 @@ function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y
 	;pick the closest of those intersection points to the interior pt 
 
 	_DistToIntersections = sqrt((x2-px)^2+(y2-py)^2)
+
+    ; catch for parallel line with polyon edge
+
+    iiGood = where(_distToIntersections eq _distToIntersections, iiGoodCnt)
+    if iiGoodCnt ne n_elements(_distToIntersections) then begin
+        _DistToIntersections = _DistToIntersections[iiGood]        
+        px = px[iiGood]
+        py = py[iiGood]
+    endif
+
 	iiPt = where(_DistToIntersections eq min(_DistToIntersections), iiPtCnt)
-	if iiPtCnt gt 1 then stop ; bugger
+	if iiPtCnt gt 1 or iiPt lt 0 then stop ; bugger
 
 	xLeft = px[iiPt]
 	yLeft = py[iiPt]
 
+    if keyword_set(crash) then stop
 	return, [xLeft,yLeft]
+
 end

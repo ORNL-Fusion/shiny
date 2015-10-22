@@ -1,4 +1,4 @@
-function heat1d, s, T, k, nT, cfl = _cfl, plot = _plot
+function heat1d, s, T, Q, k, nT, cfl = _cfl, plot = _plot, dt = dt
 
 	;nPts = 100
 	;sMin = 0
@@ -7,14 +7,13 @@ function heat1d, s, T, k, nT, cfl = _cfl, plot = _plot
 	dS = s[1]-s[0]
 
 	;T = cos(2*s)>0 ; initial condition
-	F = T*0
 	;k = fltArr(nPts) + 0.06 ; diffusion coefficent
 
 	if keyword_set(_cfl) then cfl = _cfl else cfl = 10.0 ; must be < 0.5 for this shitty explicit forward Euler time differencing
 
 	; seems to work fine for large CFL numbers here, not sure why exactly
 
-	dt = min( cfl * dS^2 / k)
+	dt = cfl * dS^2 / min(k) 
 
 	;nT = 50000L
 
@@ -32,7 +31,7 @@ function heat1d, s, T, k, nT, cfl = _cfl, plot = _plot
 		T[1:-2] = $
 				T[1:-2] $
 				+ k[1:-2] * dt / dS^2  * ( T[0:-3] - 2*T[1:-2] + T[2:-1] ) $
-				+ dt * F[1:-2]
+				+ dt * Q[1:-2]
 
 		; Apply BCs
 

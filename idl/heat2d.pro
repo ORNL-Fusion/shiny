@@ -12,7 +12,7 @@ function dr_ds, s, r
 
 end
 
-pro getDomain, p, d, _b, bndry, perp
+pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 
     bndry_x = bndry.x
     bndry_y = bndry.y
@@ -21,7 +21,7 @@ pro getDomain, p, d, _b, bndry, perp
 	_n = (d.N+1)/2
 	; generate the field line
 
-	ThisPoint = [p.x,p.y]
+	ThisPoint = [x0,y0]
 
 	_line1 = dlg_fieldLineTrace_xy(_b,ThisPoint, dir = -1, dS=d.dS, nS=_n, perp=perp )
 	_line2 = dlg_fieldLineTrace_xy(_b,ThisPoint, dir = +1, dS=d.dS, nS=_n, perp=perp )
@@ -35,7 +35,9 @@ pro getDomain, p, d, _b, bndry, perp
 
 	isInsideDomain = boundary->ContainsPoints(fLine_XY[0,*],fLine_XY[1,*])
 	iiOutside = where(isInsideDomain eq 0, iiOutsideCnt)
-	iiThisPt = _n-1
+	iiThisPt = _n-1 ; this is the middle point
+
+    if keyword_set(crash) then stop
 
 	; Extract that part of the line within the boundary
 	; accounting for craziness, multiple intersections, etc
@@ -73,7 +75,7 @@ pro getDomain, p, d, _b, bndry, perp
 	s = s[iiUse]
 	sLeft = s[0]
 	sRight = s[-1]
-	n_fl = d.N;n_elements(fLine_XY[0,*])
+	n_fl = d.N
 
 	LeftEnd = [fLine_XY[0,0],fLine_XY[1,0]]	
 	RightEnd = [fLine_XY[0,-1],fLine_XY[1,-1]]	
@@ -84,8 +86,6 @@ pro getDomain, p, d, _b, bndry, perp
 	ReGrid = 0
 
 	if min(iiUse) ne 0 then begin ; left end needs fixing 
-
-		print, 'Fixing left end'
 
 		ReGrid = 1
 
@@ -105,8 +105,6 @@ pro getDomain, p, d, _b, bndry, perp
 
 	if max(iiUse) ne n_elements(fLine_XY_all[0,*])-1 then begin ; right end needs fixing 
 
-		print, 'Fixing right end'
-
 		ReGrid = 1
 
 		iiOut = max(iiUse)+1
@@ -116,7 +114,7 @@ pro getDomain, p, d, _b, bndry, perp
 		x2 = fLine_XY_all[0,iiIn]
 		y2 = fLine_XY_all[1,iiIn]
 
-		RightEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y)
+		RightEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y,crash=crash)
 
 		sExtraBit = sqrt ( (x2-RightEnd[0])^2+(y2-RightEnd[1])^2 ) 
 		sRight = s_all[iiIn] + sExtraBit
@@ -138,15 +136,10 @@ pro getDomain, p, d, _b, bndry, perp
 
 	endif
 
-	;print, LeftEnd, fLine_XY[0,0],fLine_XY[1,0]
-	;print, RightEnd, fLine_XY[0,-1],fLine_XY[1,-1]
-
     d.s = s
     d.x = fLine_XY_all[0,*]
     d.y = fLine_XY_all[1,*]
-
-	;p=plot(d.x,d.y,/over,color='b')
-	;p=plot([1,1]*ThisPoint[0],[1,1]*ThisPoint[1],symbol='o',/sym_filled,/over)
+    if keyword_set(crash) then stop
 
 end
 
@@ -254,8 +247,8 @@ pro heat2d
     ; I'm unsure why I need to do this, bah.
     resolve_routine, 'interpb', /either, /compile_full_file, /no_recompile
 
-	nX = 60
-	nY = 61
+	nX = 20
+	nY = 21
 
     eqdsk = 0
     if eqdsk then begin
@@ -359,6 +352,7 @@ pro heat2d
 
         r = sqrt((x2D-x0)^2+(y2D-y0)^2)
         T = (1-r^3)*0
+        T2 = T 
         TSolution = sin(2*!pi*x2D) * cos(2*!pi*y2D)
 
         c=contour(psi,x,y,layout=[3,2,1],/fill,title='psi')
@@ -386,13 +380,6 @@ pro heat2d
 	xRange=[x[0],x[-1]]
 	yRange=[y[0],y[-1]]
 	nLevs = 11
-	;scale = max(abs(T))
-	;levels = fIndGen(nLevs)/(nLevs-1)*scale
-	;colors = reverse(bytScl(levels, top=253)+1)
-	;c=contour(T, x, y, aspect_ratio=1.0, $
-	;		dimensions=[width,height], $
-	;		/fill, c_value=levels, rgb_indices=colors,$
-	;		rgb_table=3,yRange=yRange,xRange=xRange,/buffer)
     c=contour(T,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=50)
 
     frame = c.CopyWindow()
@@ -400,10 +387,10 @@ pro heat2d
 	
 	; Solve the 2D problem directly on a Cartesian grid
 
-	T[0,*] = TSolution[0,*]
-        T[-1,*] = TSolution[-1,*]
-        T[*,0] = TSolution[*,0]
-        T[*,-1] = TSolution[*,-1]
+	T[0,*]  = TSolution[0,*]
+    T[-1,*] = TSolution[-1,*]
+    T[*,0]  = TSolution[*,0]
+    T[*,-1] = TSolution[*,-1]
 
 	for _t = 0, nT - 1 do begin
 
@@ -433,22 +420,9 @@ pro heat2d
 			if _t gt 0 then c.erase
             print, _t, nT    
             c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=50)
-	        ;scale = max(abs(T-mean(T)))
-	        ;levels = fIndGen(nLevs)/(nLevs-1)*scale+mean(T)
-	        ;colors = (bytScl(levels-mean(T), top=253)+1)
-			;c=contour(T, x, y, aspect_ratio=1.0, $
-			;		dimensions=[width,height], $
-			;		/fill, c_value=levels, rgb_indices=colors,$
-			;		rgb_table=3,/current,/buffer)
-			;c=contour(-T, x, y, aspect_ratio=1.0, $
-			;		dimensions=[width,height], $
-			;		/fill, c_value=levels, rgb_indices=colors,$
-			;		rgb_table=1,/current,/buffer,/over)
 			frame = c.CopyWindow()
 			!null = oVid.put(vidStream, frame)
 		endif
-
-
 
 	endfor	
 
@@ -458,6 +432,7 @@ pro heat2d
 
 
 	; Solve using the 1D set
+    ; ----------------------
 
 	bndry_x = [xMin,xMax,xMax,xMin,xMin]
 	bndry_y = [yMin,yMin,yMax,yMax,yMin]
@@ -493,11 +468,13 @@ pro heat2d
 			points[i,j].y = y[j]
 
             par = points[i,j].par
-			getDomain, points[i,j], par, b, bndry, 0
+			getDomain, x[i],y[j], par, b, bndry, 0
             points[i,j].par = par
-
+            
             per = points[i,j].per
-			getDomain, points[i,j], per, b, bndry, 1
+            crash=0
+            ;if i eq 17 and j eq 10 then crash = 1
+			getDomain, x[i],y[j], per, b, bndry, 1, crash=crash
             points[i,j].per = per
 
             plotMod = 4 
@@ -508,66 +485,71 @@ pro heat2d
 		endfor
 	endfor
 
-stop
-	fl_nX = 10
-	fl_nY = 10
+	T2[0,*]  = TSolution[0,*]
+    T2[-1,*] = TSolution[-1,*]
+    T2[*,0]  = TSolution[*,0]
+    T2[*,-1] = TSolution[*,-1]
 
-	fl_size = size
+    nItr = 5
 
-	fl_xMin = r0-fl_size 
-	fl_xMax = r0+fl_size
-	fl_x = fIndGen(fl_nX)/(fl_nX-1)*(fl_xMax-fl_xMin)+fl_xMin
-	fl_x2D = rebin(fl_x,fl_nX,fl_nY)
-	fl_dX = fl_x[1]-fl_x[0]
+    c=contour(T2,x,y,/fill,dimensions=[width,height],rgb_table=50)
 
-	fl_yMin = z0-fl_size 
-	fl_yMax = z0+fl_size
-	fl_y = fIndGen(fl_nY)/(fl_nY-1)*(fl_yMax-fl_yMin)+fl_yMin
-	fl_y2D = transpose(rebin(fl_y,fl_nY,fl_nX))
-	fl_dY = fl_y[1]-fl_y[0]
-	
-	__s = fIndGen(_n)*dS
-	__s = [reverse(-__s[1:-1]),__s[0:-1]]
+    for itr=0, nItr-1 do begin
 
-    _b = { bR : g.bR, $
-		bt : g.bPhi, $
-		bz : g.bz, $
-		r : g.r, $
-		z : g.z, $
-		rsize : g.r[-1]-g.r[0], $
-		zsize : g.z[-1]-g.z[0], $
-		nR : n_elements(g.r), $
-		nZ : n_elements(g.z)}   
+        ; Solve parallel 
 
-	fl_T = fltArr(fl_nX,fl_nY)
+        T2_copy = T2
+	    for i=1,nX-2 do begin ; don't do the boundary pts
+	    	for j=1,nY-2 do begin
 
-	for i=1,fl_nX-2 do begin ; don't do the boundary pts
-		for j=1,fl_nY-2 do begin
+                d = points[i,j].par
 
-				; Get T along said field line
+	    		; Get T along parallel domain 
 
-    		_T  = interpolate ( T, ( fLine_CYL[0,*] - x[0] ) / (xMax-xMin) * (nX-1.0), $
-        		( fLine_CYL[2,*] - y[0] ) / (yMax-yMin) * (nY-1.0), cubic = -0.5 )
+        		_T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
-			k = fltArr(n_elements(s)) + 0.06 ; diffusion coefficent
-			nT = 5000
-			_T = heat1d(s,_T,k,nT,cfl=0.4,plot=0) 
+	    		k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
+	    		nT = 1000
+	    		_T = heat1d(d.s,_T,_Q,k,nT,cfl=0.4,plot=0,dt=dt) 
 
-			fl_T[i,j] = interpol(_T,s,0,/spline) ; get T at the actual point
+	    		T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
 
-		endfor
-		
-	endfor
+	    	endfor
+	    endfor
 
-	flyRange=[fl_yMin,fl_yMax]
-	flxRange=[fl_xMin,fl_xMax]
-	c=contour(fl_T, fl_x, fl_y, aspect_ratio=1.0, $
-			dimensions=[width,height], $
-			/fill, c_value=levels, rgb_indices=colors,$
-			rgb_table=3,yRange=flyRange,xRange=flxRange)
-	c=contour(alog(-g.psizr), g.r, g.z,/over,color='w', c_value=psi_levels)
+        print, 'Par dt: ', dt
+        c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
 
-stop
+        ; Solve perp
+
+        T2_copy = T2
+	    for i=1,nX-2 do begin ; don't do the boundary pts
+	    	for j=1,nY-2 do begin
+
+                d = points[i,j].per
+
+	    		; Get T along parallel domain 
+
+        		_T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+
+	    		k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
+	    		nT = 1
+	    		_T = heat1d(d.s,_T,_Q,k,nT,cfl=0.4,plot=0,dt=dt) 
+
+	    		T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                if T2[i,j] lt -0.3 then stop
+
+	    	endfor
+	    endfor
+
+        print, 'Per dt: ', dt
+        c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
+
+    endfor
+
+	p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
 
 stop
 end
