@@ -98,8 +98,8 @@ end
 
 pro heat2d
 
-	nX = 100
-	nY = 101
+	nX = 60
+	nY = 61
 
     eqdsk = 0
     if eqdsk then begin
@@ -165,8 +165,8 @@ pro heat2d
 
         ; Generate kx / ky from kPer / kPar
 
-        kPer = 1e2
-        kPar = kPer*1e3
+        kPer = 1
+        kPar = kPer*1e2
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -196,7 +196,6 @@ pro heat2d
         endfor 
 
         Q = -kPer * lap
-        Q_sovinec = 2*!pi^2*cos(!pi*x2D)*sin(!pi*y2D)
         ;Q[*] = 0
 
         r = sqrt((x2D-x0)^2+(y2D-y0)^2)
