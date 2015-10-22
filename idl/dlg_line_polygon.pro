@@ -1,3 +1,5 @@
+; Find intersection point of a line [(x1,y1),(x2,y2)] and a polygon
+
 function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y 
 
 	px = !null
@@ -8,9 +10,10 @@ function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y
 		y3=bndry_y[bb]
 		x4=bndry_x[bb+1]
 		y4=bndry_y[bb+1]
+        ; https://en.wikipedia.org/wiki/Line-line_intersection
 		px = [px, ( (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4) ) $
 				/ ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4)  )]
-		py = [py, ( (x1*y1-y2*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4)  ) $
+		py = [py, ( (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4)  ) $
 				/ ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4)  )]
 	endfor
 

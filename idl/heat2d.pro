@@ -12,34 +12,35 @@ function dr_ds, s, r
 
 end
 
-pro getParDomain, p, _b, boundary
+pro getDomain, p, d, _b, bndry, perp
 
+    bndry_x = bndry.x
+    bndry_y = bndry.y
+    boundary = bndry.b
 
-	d = p.par
-	N = (d.N+1)/2
-	_s = fIndGen(N)*d.dS
-	d.s = [reverse(-_s[1:-1]),_s[0:-1]]
-	s = d.s
-
+	_n = (d.N+1)/2
 	; generate the field line
 
 	ThisPoint = [p.x,p.y]
 
-	_line1 = dlg_fieldLineTrace_xyz(_b,ThisPoint, dir = -1, dS=dS, nS=_n )
-	_line2 = dlg_fieldLineTrace_xyz(_b,ThisPoint, dir = +1, dS=dS, nS=_n )
-stop
-	fLine_CYL = [[reverse(_line1[*,0:-2],2)],[_line2[*,1:-2]]]
+	_line1 = dlg_fieldLineTrace_xy(_b,ThisPoint, dir = -1, dS=d.dS, nS=_n, perp=perp )
+	_line2 = dlg_fieldLineTrace_xy(_b,ThisPoint, dir = +1, dS=d.dS, nS=_n, perp=perp )
+
+	fLine_XY = [[reverse(_line1[*,0:-2],2)],[_line2[*,1:-2]]]
+    fLine_XY = fLine_XY[0:1,*]
+	_s = fIndGen(_n)*d.dS
+	s = [reverse(-_s[1:-1]),_s[0:-1]]
 
 	; Check intersection with boundary
 
-	isInsideDomain = boundary->ContainsPoints(fLine_CYL[0,*],fLine_CYL[2,*])
+	isInsideDomain = boundary->ContainsPoints(fLine_XY[0,*],fLine_XY[1,*])
 	iiOutside = where(isInsideDomain eq 0, iiOutsideCnt)
 	iiThisPt = _n-1
 
 	; Extract that part of the line within the boundary
 	; accounting for craziness, multiple intersections, etc
 
-	nF = n_elements(fLine_CYL[0,*])
+	nF = n_elements(fLine_XY[0,*])
 
 	iin = !null
 	_cont = 1
@@ -66,20 +67,16 @@ stop
 	endwhile
 
 	iiUse = [reverse(iin),iiThisPt,iip]
-	fLine_CYL_all = fLine_CYL
-	fLine_CYL = fLine_CYL[*,iiUse]
+	fLine_XY_all = fLine_XY
+	fLine_XY = fLine_XY[*,iiUse]
 	s_all = s
 	s = s[iiUse]
 	sLeft = s[0]
 	sRight = s[-1]
-	n_fl = n_elements(fLine_CYL[0,*])
+	n_fl = d.N;n_elements(fLine_XY[0,*])
 
-	LeftEnd = [fLine_CYL[0,0],fLine_CYL[2,0]]	
-	RightEnd = [fLine_CYL[0,-1],fLine_CYL[2,-1]]	
-
-	p=plot(fLine_CYL_all[0,*],fLine_CYL_all[2,*],/over,thick=2)
-	p=plot(fLine_CYL[0,*],fLine_CYL[2,*],/over,color='b')
-	p=plot([1,1]*ThisPoint[0],[1,1]*ThisPoint[2],symbol='o',/sym_filled,/over)
+	LeftEnd = [fLine_XY[0,0],fLine_XY[1,0]]	
+	RightEnd = [fLine_XY[0,-1],fLine_XY[1,-1]]	
 
 
 	; Now find actual intersection points with the wall(s)
@@ -94,32 +91,19 @@ stop
 
 		iiOut = min(iiUse)-1
 		iiIn = min(iiUse)
-		x1 = fLine_CYL_all[0,iiOut]
-		y1 = fLine_CYL_all[2,iiOut]
-		x2 = fLine_CYL_all[0,iiIn]
-		y2 = fLine_CYL_all[2,iiIn]
+		x1 = fLine_XY_all[0,iiOut]
+		y1 = fLine_XY_all[1,iiOut]
+		x2 = fLine_XY_all[0,iiIn]
+		y2 = fLine_XY_all[1,iiIn]
 
 		LeftEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y)
 
-		t2 = fLine_CYL_all[1,iiIn]
-		; this is a bit of a hack, but it's pretty close
-		tLeft = interpol(fLine_CYL_all[1,iiOut:iiIn],[x1,x2],LeftEnd[0])
-
-		_x1 = LeftEnd[0]*cos(tLeft)
-		_y1 = LeftEnd[0]*sin(tLeft)
-		_z1 = LeftEnd[1]
-
-		_x2 = x2*cos(t2)
-		_y2 = x2*sin(t2)
-		_z2 = y2
-
-		sExtraBit = sqrt ( (_x2-_x1)^2+(_y2-_y1)^2+(_z2-_z1)^2 ) 
-
+		sExtraBit = sqrt ( (x2-LeftEnd[0])^2+(y2-LeftEnd[1])^2) 
 		sLeft = s_all[iiIn] - sExtraBit
 
 	endif 
 
-	if max(iiUse) ne n_elements(fLine_CYL_all[0,*])-1 then begin ; right end needs fixing 
+	if max(iiUse) ne n_elements(fLine_XY_all[0,*])-1 then begin ; right end needs fixing 
 
 		print, 'Fixing right end'
 
@@ -127,26 +111,14 @@ stop
 
 		iiOut = max(iiUse)+1
 		iiIn = max(iiUse)
-		x1 = fLine_CYL_all[0,iiOut]
-		y1 = fLine_CYL_all[2,iiOut]
-		x2 = fLine_CYL_all[0,iiIn]
-		y2 = fLine_CYL_all[2,iiIn]
+		x1 = fLine_XY_all[0,iiOut]
+		y1 = fLine_XY_all[1,iiOut]
+		x2 = fLine_XY_all[0,iiIn]
+		y2 = fLine_XY_all[1,iiIn]
 
 		RightEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y)
 
-		t2 = fLine_CYL_all[1,iiIn]
-		tRight = interpol(fLine_CYL_all[1,iiIn:iiOut],[x2,x1],RightEnd[0])
-
-		_x1 = RightEnd[0]*cos(tRight)
-		_y1 = RightEnd[0]*sin(tRight)
-		_z1 = RightEnd[1]
-
-		_x2 = x2*cos(t2)
-		_y2 = x2*sin(t2)
-		_z2 = y2
-
-		sExtraBit = sqrt ( (_x2-_x1)^2+(_y2-_y1)^2+(_z2-_z1)^2 ) 
-
+		sExtraBit = sqrt ( (x2-RightEnd[0])^2+(y2-RightEnd[1])^2 ) 
 		sRight = s_all[iiIn] + sExtraBit
 
 	endif 
@@ -157,18 +129,24 @@ stop
 
 		sNew = fIndGen(n_fl)/(n_fl-1)*(sRight-sLeft)+sLeft
 
-		_fLine_r = interpol(fLine_CYL_all[0,*],s_all,sNew,/spline)
-		_fLine_z = interpol(fLine_CYL_all[2,*],s_all,sNew,/spline)
+		_fLine_x = interpol(fLine_XY_all[0,*],s_all,sNew)
+		_fLine_y = interpol(fLine_XY_all[1,*],s_all,sNew)
 
 		s = sNew
-		fLine_CYL[0,*] = _fLine_r
-		fLine_CYL[2,*] = _fLine_z
+		fLine_XY_all[0,*] = _fLine_x
+		fLine_XY_all[1,*] = _fLine_y
 
 	endif
 
-	print, LeftEnd, fLine_CYL[0,0],fLine_CYL[2,0]
-	print, RightEnd, fLine_CYL[0,-1],fLine_CYL[2,-1]
+	;print, LeftEnd, fLine_XY[0,0],fLine_XY[1,0]
+	;print, RightEnd, fLine_XY[0,-1],fLine_XY[1,-1]
 
+    d.s = s
+    d.x = fLine_XY_all[0,*]
+    d.y = fLine_XY_all[1,*]
+
+	;p=plot(d.x,d.y,/over,color='b')
+	;p=plot([1,1]*ThisPoint[0],[1,1]*ThisPoint[1],symbol='o',/sym_filled,/over)
 
 end
 
@@ -272,6 +250,9 @@ end
 
 
 pro heat2d
+
+    ; I'm unsure why I need to do this, bah.
+    resolve_routine, 'interpb', /either, /compile_full_file, /no_recompile
 
 	nX = 60
 	nY = 61
@@ -475,18 +456,20 @@ pro heat2d
 
 	p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none')
 
-stop
+
 	; Solve using the 1D set
 
 	bndry_x = [xMin,xMax,xMax,xMin,xMin]
 	bndry_y = [yMin,yMin,yMax,yMax,yMin]
 	boundary = Obj_New('IDLanROI',bndry_x,bndry_y)
 
-	common bfield, b
-	b = { x: x, y: y, bx : bx, by : by }
+    bndry = {x:bndry_x,y:bndry_y,b:boundary}
 
-	_n = 400
-	dS = 0.3
+	common bfield, b
+	b = { x: x, y: y, bx : bx, by : by, bz: bx*0, psi:psi }
+
+	_n = 30
+	dS = 0.005
 
 	__n = 2*_n-1
 	d1 = { $
@@ -502,12 +485,26 @@ stop
 
 	points = replicate( pt, nX, nY )
 
-	for i=0,nX-1 do begin
-		for j=0,nY-1 do begin
-			points[i,j].par.x = x[i]
-			points[i,j].par.y = y[j]
-			getParDomain, points[i,j], b, boundary
-			getPerDomain, points[i,j], b, boundary
+    c=contour(psi,x,y,/fill)
+
+	for i=1,nX-2 do begin
+		for j=1,nY-2 do begin
+			points[i,j].x = x[i]
+			points[i,j].y = y[j]
+
+            par = points[i,j].par
+			getDomain, points[i,j], par, b, bndry, 0
+            points[i,j].par = par
+
+            per = points[i,j].per
+			getDomain, points[i,j], per, b, bndry, 1
+            points[i,j].per = per
+
+            plotMod = 4 
+            if i mod plotMod eq 0 and j mod plotMod eq 0 then begin
+                    p=plot(points[i,j].per.x,points[i,j].per.y,/over)
+                    p=plot(points[i,j].par.x,points[i,j].par.y,/over)
+            endif 
 		endfor
 	endfor
 
