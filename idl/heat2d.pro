@@ -247,8 +247,8 @@ pro heat2d
     ; I'm unsure why I need to do this, bah.
     resolve_routine, 'interpb', /either, /compile_full_file, /no_recompile
 
-	nX = 20
-	nY = 21
+	nX = 40
+	nY = 41
 
     eqdsk = 0
     if eqdsk then begin
@@ -316,7 +316,7 @@ pro heat2d
         ; Generate kx / ky from kPer / kPar
 
         kPer = 1
-        kPar = 1e9
+        kPar = 1e6
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -490,7 +490,7 @@ pro heat2d
     T2[*,0]  = TSolution[*,0]
     T2[*,-1] = TSolution[*,-1]
 
-    nItr = 5
+    nItr = 10 
 
     c=contour(T2,x,y,/fill,dimensions=[width,height],rgb_table=50)
 
@@ -510,7 +510,7 @@ pro heat2d
                 _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
 	    		k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
-	    		nT = 1000
+	    		nT = 500
 	    		_T = heat1d(d.s,_T,_Q,k,nT,cfl=0.4,plot=0,dt=dt) 
 
 	    		T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
@@ -536,7 +536,7 @@ pro heat2d
 
 	    		k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
 	    		nT = 1
-	    		_T = heat1d(d.s,_T,_Q,k,nT,cfl=0.4,plot=0,dt=dt) 
+	    		_T = heat1d(d.s,_T,_Q,k,nT,cfl=1e-3,plot=0,dt=dt) 
 
 	    		T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
                 if T2[i,j] lt -0.3 then stop
@@ -545,6 +545,7 @@ pro heat2d
 	    endfor
 
         print, 'Per dt: ', dt
+        c.erase
         c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
 
     endfor
