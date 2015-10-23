@@ -1,21 +1,12 @@
-function heat1d, s, T, Q, k, nT, cfl = _cfl, plot = _plot, dt = dt
+function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot
 
-	;nPts = 100
-	;sMin = 0
-	;sMax = 1
-	;s = fIndGen(nPts)/(nPts-1)*(sMax-sMin)+sMin
 	dS = s[1]-s[0]
 
-	;T = cos(2*s)>0 ; initial condition
-	;k = fltArr(nPts) + 0.06 ; diffusion coefficent
+	;if keyword_set(_cfl) then cfl = _cfl else cfl = 10.0 ; must be < 0.5 for this shitty explicit forward Euler time differencing
+	;dt = cfl * dS^2 / min(k) 
 
-	if keyword_set(_cfl) then cfl = _cfl else cfl = 10.0 ; must be < 0.5 for this shitty explicit forward Euler time differencing
-
-	; seems to work fine for large CFL numbers here, not sure why exactly
-
-	dt = cfl * dS^2 / min(k) 
-
-	;nT = 50000L
+	_cfl = dt * max(k) / dS^2
+	if _cfl gt 0.5 then stop
 
 	if keyword_set(_plot) then p=plot(s,T)
 

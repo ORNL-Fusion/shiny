@@ -316,7 +316,7 @@ pro heat2d
         ; Generate kx / ky from kPer / kPar
 
         kPer = 1
-        kPar = 1e6
+        kPar = 1e9
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -444,7 +444,7 @@ pro heat2d
 	b = { x: x, y: y, bx : bx, by : by, bz: bx*0, psi:psi }
 
 	_n = 30
-	dS = 0.005
+	dS = 0.025
 
 	__n = 2*_n-1
 	d1 = { $
@@ -486,11 +486,11 @@ pro heat2d
 	endfor
 
 	T2[0,*]  = TSolution[0,*]
-    T2[-1,*] = TSolution[-1,*]
-    T2[*,0]  = TSolution[*,0]
-    T2[*,-1] = TSolution[*,-1]
+    	T2[-1,*] = TSolution[-1,*]
+    	T2[*,0]  = TSolution[*,0]
+    	T2[*,-1] = TSolution[*,-1]
 
-    nItr = 10 
+    nItr = 500 
 
     c=contour(T2,x,y,/fill,dimensions=[width,height],rgb_table=50)
 
@@ -507,18 +507,17 @@ pro heat2d
 	    		; Get T along parallel domain 
 
         		_T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
-                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+                	_Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
 	    		k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
-	    		nT = 500
-	    		_T = heat1d(d.s,_T,_Q,k,nT,cfl=0.4,plot=0,dt=dt) 
+	    		nT = 1
+	    		_T = heat1d(d.s,_T,_Q,k,dT/2,nT,cfl=cfl,plot=0) 
 
 	    		T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
 
 	    	endfor
 	    endfor
 
-        print, 'Par dt: ', dt
         c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
 
         ; Solve perp
@@ -532,19 +531,17 @@ pro heat2d
 	    		; Get T along parallel domain 
 
         		_T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
-                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+                	_Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
 	    		k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
 	    		nT = 1
-	    		_T = heat1d(d.s,_T,_Q,k,nT,cfl=1e-3,plot=0,dt=dt) 
+	    		_T = heat1d(d.s,_T,_Q,k,dt/2,nT,cfl=cfl,plot=0) 
 
 	    		T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
-                if T2[i,j] lt -0.3 then stop
 
 	    	endfor
 	    endfor
 
-        print, 'Per dt: ', dt
         c.erase
         c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
 
