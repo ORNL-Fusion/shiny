@@ -1,6 +1,6 @@
 function tFac, kPer, t
     
-    return, (1d0 - exp( -2*kPer*!pi^2*t) ) / kPer
+    return, (1d0 - exp( -2d0*kPer*!dpi^2*t) ) / kPer
 
 end
 
@@ -298,14 +298,14 @@ pro heat2d
             y0 = -0.5
         endelse
 
-        xMin = -0.5 
+       xMin = -0.5 
 	    xMax = +0.5
 	    x = fIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
 	    x2D = rebin(x,nX,nY)
 	    dX = x[1]-x[0]
 
-	    yMin = -0.75 
-	    yMax = +0.75
+	    yMin = -0.5 
+	    yMax = +0.5
 	    y = fIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
 	    y2D = transpose(rebin(y,nY,nX))
 	    dY = y[1]-y[0]
@@ -323,7 +323,7 @@ pro heat2d
         ; Generate kx / ky from kPer / kPar
 
         kPer = 1
-        kPar = 1e9
+        kPar = 1e2
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -352,10 +352,12 @@ pro heat2d
             endfor
         endfor 
 
-        Q = -lap 
-        T = tFac(kPer,0) * psi
+        ;Q = -lap 
+	Q = 2*!pi^2*psi ; analytic -Laplacian(psi)
+
+        T = fltArr(nX,nY)
         T2 = T 
-        TSolution = sin(2*!pi*x2D) * cos(2*!pi*y2D)
+        TSolution = tFac(kPer,0) * psi
 
         c=contour(psi,x,y,layout=[3,2,1],/fill,title='psi')
         c=contour(TSolution,x,y,layout=[3,2,2],/current,/fill,title='T')
@@ -367,7 +369,7 @@ pro heat2d
     endelse
 
 
-	CFL = 0.9 ; must be < 1 for this shitty explicit forward Euler time differencing
+	CFL = 0.4 ; must be < 1 for this shitty explicit forward Euler time differencing
     _D = max(abs([kx,ky]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
@@ -389,39 +391,97 @@ pro heat2d
 	
 	; Solve the 2D problem directly on a Cartesian grid
 
-	T[0,*]  = TSolution[0,*]
-    T[-1,*] = TSolution[-1,*]
-    T[*,0]  = TSolution[*,0]
-    T[*,-1] = TSolution[*,-1]
-
 	for _t = 0, nT - 1 do begin
 
+		TSolution = tFac(kPer,_t*dt) * psi
 
-		T[1:-2,1:-2] = $
-				T[1:-2,1:-2] $
-				+ kx[1:-2,1:-2] * dt / dX^2  * ( T[0:-3,1:-2] - 2*T[1:-2,1:-2] + T[2:-1,1:-2] ) $
-				+ ky[1:-2,1:-2] * dt / dY^2  * ( T[1:-2,0:-3] - 2*T[1:-2,1:-2] + T[1:-2,2:-1] ) $
-				+ dt * Q[1:-2,1:-2]
+		;T[1:-2,1:-2] = T[1:-2,1:-2] $
+		;	+ kx[1:-2,1:-2] * dt / dX^2  * ( T[0:-3,1:-2] - 2*T[1:-2,1:-2] + T[2:-1,1:-2] ) $
+		;	+ ky[1:-2,1:-2] * dt / dY^2  * ( T[1:-2,0:-3] - 2*T[1:-2,1:-2] + T[1:-2,2:-1] ) $
+		;	+ dt * Q[1:-2,1:-2]
 
-		;; Apply BCs
+		; Try the asymetric scheme by Gunter et al. 
 
-		;; left side : dT/dX = 0 second order accurate forward difference
-		;T[0,*] = (-2*T[1,*] + 0.5*T[2,*])/(-1.5) ;  
+		TUpdate = fltArr(nX,nY)*0
 
-		;; right side : dT/dX = 0 second order accurate backward difference
-		;T[-1,*] = (+2*T[-2,*] - 0.5*T[-3,*])/(+1.5) 
+		for i=1,nX-2 do begin
+		for j=1,nY-2 do begin
+			; NOTE : 
+			; ipj -> [i+1/2,j]
+			; ijp -> [i,j+1/2]
+			; imj -> [i-1/2,j]
+			; ijm -> [i,j-1/2]
 
-		;; top : dT/dY = 0 second order accurate forward difference
-		;T[*,0] = (-2*T[*,1] + 0.5*T[*,2])/(-1.5)  
+			; Temperature gradient term
 
-		;; bottom : dT/dY = 0 second order accurate backward difference
-		;T[*,-1] = (+2*T[*,-2] - 0.5*T[*,-3])/(+1.5) ; 
+			dTdx_ipj = (T[i+1,j] - T[i,j])/dx
+			dTdy_ipj = (T[i+1,j+1] + T[i,j+1] - T[i,j-1] - T[i+1,j-1]) / (4*dy)
+			dTdx_ijp = (T[i+1,j+1] + T[i+1,j] - T[i-1,j+1] - T[i-1,j]) / (4*dx)
+			dTdy_ijp = (T[i,j+1] - T[i,j])/dy
+
+			dTdx_imj = (T[i,j] - T[i-1,j])/dx
+			dTdy_imj = (T[i,j+1] + T[i-1,j+1] - T[i-1,j-1] - T[i,j-1]) / (4*dy)
+			dTdx_ijm = (T[i+1,j] + T[i+1,j-1] - T[i-1,j] - T[i-1,j-1]) / (4*dx)
+			dTdy_ijm = (T[i,j] - T[i,j-1])/dy
+
+			; Heat conduction term
+			; q = -D.\/(T) where D is a 2x2 tensor
+
+			; x plus / minus terms
+			xp = x[i]+dx/2
+			b1 = interpolate( bxu, (xp-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
+			b2 = interpolate( byu, (xp-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
+
+			D_ipj = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
+			q_ipj = [0,0]
+			q_ipj[0] = -( D_ipj[0,0] * dTdx_ipj + D_ipj[1,0] * dTdy_ipj )
+			q_ipj[1] = -( D_ipj[0,1] * dTdx_ipj + D_ipj[1,1] * dTdy_ipj )
+
+			xm = x[i]-dx/2
+			b1 = interpolate( bxu, (xm-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
+			b2 = interpolate( byu, (xm-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
+
+			D_imj = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
+			q_imj = [0,0]
+			q_imj[0] = -( D_imj[0,0] * dTdx_imj + D_imj[1,0] * dTdy_imj )
+			q_imj[1] = -( D_imj[0,1] * dTdx_imj + D_imj[1,1] * dTdy_imj )
+
+			; y plus / minus terms
+			yp = y[i]+dy/2
+			b1 = interpolate( bxu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (yp-y[0])/(y[-1]-y[0])*(nY-1) )	
+			b2 = interpolate( byu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (yp-y[0])/(y[-1]-y[0])*(nY-1) )	
+
+			D_ijp = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
+			q_ijp = [0,0]
+			q_ijp[0] = -( D_ijp[0,0] * dTdx_ijp + D_ijp[1,0] * dTdy_ijp )
+			q_ijp[1] = -( D_ijp[0,1] * dTdx_ijp + D_ijp[1,1] * dTdy_ijp )
+
+			ym = y[i]-dy/2
+			b1 = interpolate( bxu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (ym-y[0])/(y[-1]-y[0])*(nY-1) )	
+			b2 = interpolate( byu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (ym-y[0])/(y[-1]-y[0])*(nY-1) )	
+
+			D_ijm = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
+			q_ijm = [0,0]
+			q_ijm[0] = -( D_ijm[0,0] * dTdx_ijm + D_ijm[1,0] * dTdy_ijp )
+			q_ijm[1] = -( D_ijm[0,1] * dTdx_ijm + D_ijm[1,1] * dTdy_ijp )
+
+			; Diffusion term
+			; -\/.q
+
+			divq = (q_ipj[0] - q_imj[0])/dx + (q_ijp[1]-q_ijm[1])/dy
+
+			TUpdate[i,j] = dt * (-divq + Q[i,j])
+
+		endfor
+		endfor
+
+		T = T + TUpdate
 
 		; plot time evolving solution at a subset of times
 		if _t mod 50 eq 0 then begin
 			if _t gt 0 then c.erase
-            print, _t, nT    
-            c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=50)
+            		print, _t, nT    
+            		c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=50)
 			frame = c.CopyWindow()
 			!null = oVid.put(vidStream, frame)
 		endif
@@ -431,8 +491,10 @@ pro heat2d
 	oVid.cleanup
 
 	p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none')
+	r=regress(TSolution[*],T[*],yfit=fit)
+	p=plot(TSolution[*],fit,/over,title='Slope: '+string(r))
 
-
+stop
 	; Solve using the 1D set
     ; ----------------------
 
