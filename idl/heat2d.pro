@@ -1,3 +1,9 @@
+function tFac, kPer, t
+    
+    return, (1d0 - exp( -2*kPer*!pi^2*t) ) / kPer
+
+end
+
 function dr_ds, s, r
 
 	common bfield, b
@@ -304,10 +310,11 @@ pro heat2d
 	    y2D = transpose(rebin(y,nY,nX))
 	    dY = y[1]-y[0]
 	
-        psi = sin(2*!pi*x2D) * cos(2*!pi*y2D)
+        psi = cos(!pi*x2D) * cos(!pi*y2D)
         grad, psi, x, y, gradX, gradY
         lap = laplacian( psi, x, y)
 
+        ; b = zUnit x grad(psi)
 
         bx = -gradY
         by = +gradX
@@ -345,13 +352,8 @@ pro heat2d
             endfor
         endfor 
 
-        ;Q = -kPer * lap * 5e1
-        Q = lap * 5e1
-
-        ;Q[*] = 0
-
-        r = sqrt((x2D-x0)^2+(y2D-y0)^2)
-        T = (1-r^3)*0
+        Q = -lap 
+        T = tFac(kPer,0) * psi
         T2 = T 
         TSolution = sin(2*!pi*x2D) * cos(2*!pi*y2D)
 
