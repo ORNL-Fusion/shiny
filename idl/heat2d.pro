@@ -439,7 +439,7 @@ pro heat2d
 		T = T + TUpdate
 
 		; plot time evolving solution at a subset of times
-		if _t mod 50 eq 0 then begin
+		if _t mod 50 eq 0 and _t gt 0 then begin
 			if _t gt 0 then c.erase
             		print, _t, nT    
             		c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=50)
@@ -584,7 +584,7 @@ pro heat2d
 	    endfor
 
 		; plot time evolving solution at a subset of times
-		if itr mod 50 eq 0 then begin
+		if itr mod 50 eq 0 and itr gt 0 then begin
 			if itr gt 0 then c.erase
             		print, itr, nItr    
             		c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=51)
