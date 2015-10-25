@@ -243,8 +243,8 @@ end
 
 pro heat2d
 
-    ; I'm unsure why I need to do this, bah.
-    resolve_routine, 'interpb', /either, /compile_full_file, /no_recompile
+    	; I'm unsure why I need to do this, bah.
+    	resolve_routine, 'interpb', /either, /compile_full_file, /no_recompile
 
 	nX = 40
 	nY = 41
@@ -291,17 +291,17 @@ pro heat2d
             y0 = -0.5
         endelse
 
-       xMin = -0.5 
-	    xMax = +0.5
-	    x = fIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
-	    x2D = rebin(x,nX,nY)
-	    dX = x[1]-x[0]
-
-	    yMin = -0.5 
-	    yMax = +0.5
-	    y = fIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
-	    y2D = transpose(rebin(y,nY,nX))
-	    dY = y[1]-y[0]
+       	xMin = -0.5 
+	xMax = +0.5
+	x = fIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
+	x2D = rebin(x,nX,nY)
+	dX = x[1]-x[0]
+	
+	yMin = -0.5 
+	yMax = +0.5
+	y = fIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
+	y2D = transpose(rebin(y,nY,nX))
+	dY = y[1]-y[0]
 	
         psi = cos(!pi*x2D) * cos(!pi*y2D)
         grad, psi, x, y, gradX, gradY
@@ -316,34 +316,12 @@ pro heat2d
         ; Generate kx / ky from kPer / kPar
 
         kPer = 1
-        kPar = 1e9
+        kPar = 1e3
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
         byU = by / bMag
         bzU = bz / bMag
-
-        kx = fltArr(nX,nY)
-        ky = fltArr(nX,nY)
-
-        for i=0,nX-1 do begin
-            for j=0,nY-1 do begin
-        
-                parU = [bxU[i,j],byU[i,j],bzU[i,j]]
-                zU = [0,0,1]
-                perU = crossp(parU,zU)
-                perU = perU / sqrt(perU[0]^2+perU[1]^2+perU[2]^2)
-
-                kx[i,j] = 0 
-                kx[i,j] = kx[i,j] + abs(kPer * perU[0])
-                kx[i,j] = kx[i,j] + abs(kPar * parU[0])
-
-                ky[i,j] = 0
-                ky[i,j] = ky[i,j] + abs(kPer * perU[1])
-                ky[i,j] = ky[i,j] + abs(kPar * parU[1])
-
-            endfor
-        endfor 
 
         ;Q = -lap 
 	Q = 2*!pi^2*psi ; analytic -Laplacian(psi)
@@ -354,44 +332,34 @@ pro heat2d
 
         c=contour(psi,x,y,layout=[3,2,1],/fill,title='psi')
         c=contour(TSolution,x,y,layout=[3,2,2],/current,/fill,title='T')
-        c=contour(kx,x,y,layout=[3,2,3],/current,/fill,title='kx',rgb_table=50)
-        c=contour(ky,x,y,layout=[3,2,4],/current,/fill,title='ky',rgb_table=50)
         c=contour(Q,x,y,layout=[3,2,5],/current,/fill,title='Q')
         v=vector(bx,by,x,y,layout=[3,2,6],/current,auto_color=1,rgb_table=10,auto_subsample=1,title='B')
 
     endelse
 
 
-	CFL = 0.4 ; must be < 1 for this shitty explicit forward Euler time differencing
-    _D = max(abs([kx,ky]))
-    dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
+	CFL = 0.4 ; must be < 0.5 for this shitty explicit forward Euler time differencing
+    	_D = max(abs([kPer,kPar]))
+    	dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
 	nT = 500L
 
 	width = 400
 	height = 400
-	oVid = IDLffVideoWrite('heat2d.webm')
+	oVid = IDLffVideoWrite('asymmetric.webm')
 	fps = 4 
 	vidStream = oVid.AddVideoStream(width, height, fps)
 
 	xRange=[x[0],x[-1]]
 	yRange=[y[0],y[-1]]
 	nLevs = 11
-    c=contour(T,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=50)
+    	c=contour(T,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=50)
 
-    frame = c.CopyWindow()
-	!null = oVid.put(vidStream, frame)
-	
 	; Solve the 2D problem directly on a Cartesian grid
 
 	for _t = 0, nT - 1 do begin
 
 		TSolution = tFac(kPer,_t*dt) * psi
-
-		;T[1:-2,1:-2] = T[1:-2,1:-2] $
-		;	+ kx[1:-2,1:-2] * dt / dX^2  * ( T[0:-3,1:-2] - 2*T[1:-2,1:-2] + T[2:-1,1:-2] ) $
-		;	+ ky[1:-2,1:-2] * dt / dY^2  * ( T[1:-2,0:-3] - 2*T[1:-2,1:-2] + T[1:-2,2:-1] ) $
-		;	+ dt * Q[1:-2,1:-2]
 
 		; Try the asymetric scheme by Gunter et al. 
 
@@ -483,19 +451,25 @@ pro heat2d
 
 	oVid.cleanup
 
+	l2 = norm(TSolution-T,lNorm=2)
 	p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none',aspect_ratio=1.0)
 	r=regress(TSolution[*],T[*],yfit=fit)
-	p=plot(TSolution[*],fit,/over,title='Slope: '+string(r),color='y')
+	p=plot(TSolution[*],fit,/over,$
+		title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
 
 
 	; Solve using the 1D set
-    ; ----------------------
+    	; ----------------------
+
+	oVid2 = IDLffVideoWrite('operator-split.webm')
+	fps = 4 
+	vidStream2 = oVid2.AddVideoStream(width, height, fps)
 
 	bndry_x = [xMin,xMax,xMax,xMin,xMin]
 	bndry_y = [yMin,yMin,yMax,yMax,yMin]
 	boundary = Obj_New('IDLanROI',bndry_x,bndry_y)
 
-    bndry = {x:bndry_x,y:bndry_y,b:boundary}
+    	bndry = {x:bndry_x,y:bndry_y,b:boundary}
 
 	common bfield, b
 	b = { x: x, y: y, bx : bx, by : by, bz: bx*0, psi:psi }
@@ -527,7 +501,7 @@ pro heat2d
 
 	points = replicate( pt, nX, nY )
 
-    c=contour(psi,x,y,/fill)
+    	c=contour(psi,x,y,/fill)
 
 	for i=1,nX-2 do begin
 		for j=1,nY-2 do begin
@@ -557,11 +531,13 @@ pro heat2d
     	T2[*,0]  = TSolution[*,0]
     	T2[*,-1] = TSolution[*,-1]
 
-    nItr = 500 
+    nItr = nT 
 
-    c=contour(T2,x,y,/fill,dimensions=[width,height],rgb_table=50)
+	c=contour(T2,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=51)
 
     for itr=0, nItr-1 do begin
+
+	if itr mod 50 eq 0 then print, itr, nItr    
 
         ; Solve parallel 
 
@@ -585,8 +561,6 @@ pro heat2d
 	    	endfor
 	    endfor
 
-        ;c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
-
         ; Solve perp
 
         T2_copy = T2
@@ -609,16 +583,23 @@ pro heat2d
 	    	endfor
 	    endfor
 
-        ;c.erase
-        ;c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
-
+		; plot time evolving solution at a subset of times
+		if itr mod 50 eq 0 then begin
+			if itr gt 0 then c.erase
+            		print, itr, nItr    
+            		c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=51)
+			frame = c.CopyWindow()
+			!null = oVid2.put(vidStream2, frame)
+		endif
     endfor
 
 	TSolution = tFac(kPer,nItr*dt) * psi
 
+	l2 = norm(TSolution-T2,lNorm=2)
 	p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none',aspect_ratio=1.0)
 	r=regress(TSolution[*],T2[*],yfit=fit)
-	p=plot(TSolution[*],fit,/over,title='Slope: '+string(r),color='y')
+	p=plot(TSolution[*],fit,/over,$
+		title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
 
 stop
 end
