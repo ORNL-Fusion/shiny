@@ -1,3 +1,13 @@
+function b, x, y
+
+	bx = +!pi*cos(!pi*x)*sin(!pi*y)
+	by = -!pi*cos(!pi*y)*sin(!pi*x) 
+	bz = bx*0
+
+	return, [[bx],[by],[bz]]
+
+end
+
 function tFac, kPer, t
     
     return, (1d0 - exp( -2d0*kPer*!dpi^2*t) ) / kPer
@@ -246,7 +256,7 @@ pro heat2d
     	; I'm unsure why I need to do this, bah.
     	resolve_routine, 'interpb', /either, /compile_full_file, /no_recompile
 
-	nX = 40
+	nX = 39
 	nY = 41
 
     eqdsk = 0
@@ -305,12 +315,19 @@ pro heat2d
 	
         psi = cos(!pi*x2D) * cos(!pi*y2D)
         grad, psi, x, y, gradX, gradY
-        lap = laplacian( psi, x, y)
+        ;lap = laplacian( psi, x, y)
+	lap = -2*!pi^2*psi ; analytic Laplacian(psi)
 
         ; b = zUnit x grad(psi)
 
         bx = -gradY
         by = +gradX
+        bz = bx*0
+
+	; Use analytic expression for b instead
+
+	bx = +!pi*cos(!pi*x2d)*sin(!pi*y2d)
+        by = -!pi*cos(!pi*y2d)*sin(!pi*x2d) 
         bz = bx*0
 
         ; Generate kx / ky from kPer / kPar
@@ -323,8 +340,7 @@ pro heat2d
         byU = by / bMag
         bzU = bz / bMag
 
-        ;Q = -lap 
-	Q = 2*!pi^2*psi ; analytic -Laplacian(psi)
+       	Q = -lap 
 
         T = fltArr(nX,nY)
         T2 = T 
@@ -338,11 +354,11 @@ pro heat2d
     endelse
 
 
-	CFL = 0.4 ; must be < 0.5 for this shitty explicit forward Euler time differencing
+	CFL = 0.9 ; must be < 0.5 for this shitty explicit forward Euler time differencing
     	_D = max(abs([kPer,kPar]))
     	dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-	nT = 500L
+	nT = 300L
 
 	width = 400
 	height = 400
@@ -390,8 +406,10 @@ pro heat2d
 
 			; x plus / minus terms
 			xp = x[i]+dx/2
-			b1 = interpolate( bxu, (xp-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
-			b2 = interpolate( byu, (xp-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
+			_b = b(xp,y[j])
+			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			b1 = _b[0]
+			b2 = _b[1]
 
 			D_ipj = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
 			q_ipj = [0,0]
@@ -399,8 +417,10 @@ pro heat2d
 			q_ipj[1] = -( D_ipj[0,1] * dTdx_ipj + D_ipj[1,1] * dTdy_ipj )
 
 			xm = x[i]-dx/2
-			b1 = interpolate( bxu, (xm-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
-			b2 = interpolate( byu, (xm-x[0])/(x[-1]-x[0])*(nX-1), (y[j]-y[0])/(y[-1]-y[0])*(nY-1) )	
+			_b = b(xm,y[j])
+			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			b1 = _b[0]
+			b2 = _b[1]
 
 			D_imj = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
 			q_imj = [0,0]
@@ -409,8 +429,10 @@ pro heat2d
 
 			; y plus / minus terms
 			yp = y[i]+dy/2
-			b1 = interpolate( bxu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (yp-y[0])/(y[-1]-y[0])*(nY-1) )	
-			b2 = interpolate( byu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (yp-y[0])/(y[-1]-y[0])*(nY-1) )	
+			_b = b(x[i],yp)
+			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			b1 = _b[0]
+			b2 = _b[1]
 
 			D_ijp = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
 			q_ijp = [0,0]
@@ -418,8 +440,10 @@ pro heat2d
 			q_ijp[1] = -( D_ijp[0,1] * dTdx_ijp + D_ijp[1,1] * dTdy_ijp )
 
 			ym = y[i]-dy/2
-			b1 = interpolate( bxu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (ym-y[0])/(y[-1]-y[0])*(nY-1) )	
-			b2 = interpolate( byu, (x[i]-x[0])/(x[-1]-x[0])*(nX-1), (ym-y[0])/(y[-1]-y[0])*(nY-1) )	
+			_b = b(x[i],ym)
+			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			b1 = _b[0]
+			b2 = _b[1]
 
 			D_ijm = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
 			q_ijm = [0,0]
@@ -452,10 +476,13 @@ pro heat2d
 	oVid.cleanup
 
 	l2 = norm(TSolution-T,lNorm=2)
+	dkPer = 1/T[nX/2,nY/2]-kPer
 	p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none',aspect_ratio=1.0)
 	r=regress(TSolution[*],T[*],yfit=fit)
 	p=plot(TSolution[*],fit,/over,$
 		title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
+
+stop
 
 
 	; Solve using the 1D set
