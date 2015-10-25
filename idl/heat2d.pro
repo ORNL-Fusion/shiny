@@ -24,7 +24,7 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
     bndry_y = bndry.y
     boundary = bndry.b
 
-	_n = (d.N+1)/2
+	_n = fix(d.L/d.dS)+1
 	; generate the field line
 
 	ThisPoint = [x0,y0]
@@ -33,7 +33,7 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 	_line2 = dlg_fieldLineTrace_xy(_b,ThisPoint, dir = +1, dS=d.dS, nS=_n, perp=perp )
 
 	fLine_XY = [[reverse(_line1[*,0:-2],2)],[_line2[*,1:-2]]]
-    fLine_XY = fLine_XY[0:1,*]
+    	fLine_XY = fLine_XY[0:1,*]
 	_s = fIndGen(_n)*d.dS
 	s = [reverse(-_s[1:-1]),_s[0:-1]]
 
@@ -89,7 +89,7 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 
 	; Now find actual intersection points with the wall(s)
 
-	ReGrid = 0
+	ReGrid = 1
 
 	if min(iiUse) ne 0 then begin ; left end needs fixing 
 
@@ -129,22 +129,15 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 
 	; Interpolate field line to new constant dS such that it ends at the boundary(s)
 
-	if ReGrid then begin
+	sNew = fIndGen(n_fl)/(n_fl-1)*(sRight-sLeft)+sLeft
 
-		sNew = fIndGen(n_fl)/(n_fl-1)*(sRight-sLeft)+sLeft
+	_fLine_x = interpol(fLine_XY_all[0,*],s_all,sNew)
+	_fLine_y = interpol(fLine_XY_all[1,*],s_all,sNew)
 
-		_fLine_x = interpol(fLine_XY_all[0,*],s_all,sNew)
-		_fLine_y = interpol(fLine_XY_all[1,*],s_all,sNew)
+    d.s = sNew
+    d.x = _fLine_x
+    d.y = _fLine_y
 
-		s = sNew
-		fLine_XY_all[0,*] = _fLine_x
-		fLine_XY_all[1,*] = _fLine_y
-
-	endif
-
-    d.s = s
-    d.x = fLine_XY_all[0,*]
-    d.y = fLine_XY_all[1,*]
     if keyword_set(crash) then stop
 
 end
@@ -323,7 +316,7 @@ pro heat2d
         ; Generate kx / ky from kPer / kPar
 
         kPer = 1
-        kPar = 1e2
+        kPar = 1e9
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -490,11 +483,11 @@ pro heat2d
 
 	oVid.cleanup
 
-	p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none')
+	p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none',aspect_ratio=1.0)
 	r=regress(TSolution[*],T[*],yfit=fit)
-	p=plot(TSolution[*],fit,/over,title='Slope: '+string(r))
+	p=plot(TSolution[*],fit,/over,title='Slope: '+string(r),color='y')
 
-stop
+
 	; Solve using the 1D set
     ; ----------------------
 
@@ -507,10 +500,19 @@ stop
 	common bfield, b
 	b = { x: x, y: y, bx : bx, by : by, bz: bx*0, psi:psi }
 
-	_n = 30
-	dS = 0.025
+	; Estimate appropriate 1-D length for a single timestep
+	; i.e., information only flows at the CFL condition, so 
+	; ...
 
-	__n = 2*_n-1
+	; CFL = kPar * dt / dS^2
+
+	nCFL = 10 ; i.e., number of grid points in the 1-D domain
+	
+	lPar = nCFL * sqrt(kPar * dt / 0.4)	
+
+	dS = 0.005
+
+	__n = 2*nCFL-1
 	d1 = { $
 		N: __n, $
 		x: fltArr(__n), $
@@ -518,7 +520,8 @@ stop
 		dS: dS, $
 		s: fltArr(__n), $
 		kx: fltArr(__n), $
-		ky: fltArr(__n) }	
+		ky: fltArr(__n), $
+		L: lpar }	
 
 	pt = { x: 0.0, y:0.0, par : d1, per : d1 } ; grid point structure contains both per and par domains	   
 
@@ -582,7 +585,7 @@ stop
 	    	endfor
 	    endfor
 
-        c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
+        ;c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
 
         ; Solve perp
 
@@ -606,12 +609,16 @@ stop
 	    	endfor
 	    endfor
 
-        c.erase
-        c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
+        ;c.erase
+        ;c=contour(T2,x,y,/fill,/current,dimensions=[width,height],rgb_table=50)
 
     endfor
 
-	p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
+	TSolution = tFac(kPer,nItr*dt) * psi
+
+	p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none',aspect_ratio=1.0)
+	r=regress(TSolution[*],T2[*],yfit=fit)
+	p=plot(TSolution[*],fit,/over,title='Slope: '+string(r),color='y')
 
 stop
 end
