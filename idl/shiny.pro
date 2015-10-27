@@ -47,28 +47,28 @@ pro shiny
             y0 = -0.5
         endelse
 
-        xMin = -0.5 
-        xMax = +0.5
-        x = fIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
+        xMin = -0.5d0 
+        xMax = +0.5d0
+        x = dIndGen(nX)/(nX-1)*(xMax-xMin)+xMin
         x2D = rebin(x,nX,nY)
         dX = x[1]-x[0]
         
-        yMin = -0.5 
-        yMax = +0.5
-        y = fIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
+        yMin = -0.5d0 
+        yMax = +0.5d0
+        y = dIndGen(nY)/(nY-1)*(yMax-yMin)+yMin
         y2D = transpose(rebin(y,nY,nX))
         dY = y[1]-y[0]
     
-        psi = cos(!pi*x2D) * cos(!pi*y2D)
+        psi = cos(!dpi*x2D) * cos(!dpi*y2D)
         grad, psi, x, y, gradX, gradY
         ;lap = laplacian( psi, x, y)
         lap = -2*!pi^2*psi ; analytic Laplacian(psi)
 
         ; b = zUnit x grad(psi)
 
-        bx = -gradY
-        by = +gradX
-        bz = bx*0
+        ;bx = -gradY
+        ;by = +gradX
+        ;bz = bx*0
 
         ; Use analytic expression for b instead
 
@@ -76,10 +76,8 @@ pro shiny
         by = -!pi*cos(!pi*y2d)*sin(!pi*x2d) 
         bz = bx*0
 
-        ; Generate kx / ky from kPer / kPar
-
         kPer = 1
-        kPar = 1e3
+        kPar = 1e9
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -100,11 +98,11 @@ pro shiny
     endelse
 
 
-    CFL = 0.3 ; must be < 0.5 for this shitty explicit forward Euler time differencing
+    CFL = 0.1 ; must be < 1.0 for this shitty explicit forward Euler time differencing
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 150L
+    nT = 1500L
 
     width = 400
     height = 400
@@ -123,6 +121,14 @@ pro shiny
 
         TSolution = tFac(kPer,_t*dt) * psi
 
+        ; Yeah, this should be zero, but numerically it's not. Just
+        ; doing this to see if it's the source of the instability.
+
+        T[0,*]  = TSolution[0,*]
+        T[-1,*] = TSolution[-1,*]
+        T[*,0]  = TSolution[*,0]
+        T[*,-1] = TSolution[*,-1]
+ 
         ; Try the scheme(s) of Gunter et al. 
 
         TUpdate = fltArr(nX,nY)*0
@@ -138,119 +144,109 @@ pro shiny
 
             xp = x[i]+dx/2
             xm = x[i]-dx/2
-            yp = y[i]+dy/2
-            ym = y[i]-dy/2
+            yp = y[j]+dy/2
+            ym = y[j]-dy/2
 
-            ;; Asymmetric scheme
-            ;; -----------------
+            symmetric = 0
 
-            ;; Temperature gradient terms
+            if symmetric then begin
 
-            ;dTdx_ipj = (T[i+1,j] - T[i,j])/dx
-            ;dTdy_ipj = (T[i+1,j+1] + T[i,j+1] - T[i,j-1] - T[i+1,j-1]) / (4*dy)
-            ;dTdx_ijp = (T[i+1,j+1] + T[i+1,j] - T[i-1,j+1] - T[i-1,j]) / (4*dx)
-            ;dTdy_ijp = (T[i,j+1] - T[i,j])/dy
+                ; Asymmetric scheme
+                ; -----------------
 
-            ;dTdx_imj = (T[i,j] - T[i-1,j])/dx
-            ;dTdy_imj = (T[i,j+1] + T[i-1,j+1] - T[i-1,j-1] - T[i,j-1]) / (4*dy)
-            ;dTdx_ijm = (T[i+1,j] + T[i+1,j-1] - T[i-1,j] - T[i-1,j-1]) / (4*dx)
-            ;dTdy_ijm = (T[i,j] - T[i,j-1])/dy
+                ; Temperature gradient terms
 
-            ;; Heat conduction term
-            ;; q = -D.\/(T) where D is a 2x2 tensor
+                dTdx_ipj = (T[i+1,j] - T[i,j])/dx
+                dTdy_ipj = (T[i+1,j+1] + T[i,j+1] - T[i,j-1] - T[i+1,j-1]) / (4*dy)
+                dTdx_ijp = (T[i+1,j+1] + T[i+1,j] - T[i-1,j+1] - T[i-1,j]) / (4*dx)
+                dTdy_ijp = (T[i,j+1] - T[i,j])/dy
 
-            ;; x plus / minus terms
-            ;_b = b(xp,y[j])
-            ;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-            ;b1 = _b[0]
-            ;b2 = _b[1]
+                dTdx_imj = (T[i,j] - T[i-1,j])/dx
+                dTdy_imj = (T[i,j+1] + T[i-1,j+1] - T[i-1,j-1] - T[i,j-1]) / (4*dy)
+                dTdx_ijm = (T[i+1,j] + T[i+1,j-1] - T[i-1,j] - T[i-1,j-1]) / (4*dx)
+                dTdy_ijm = (T[i,j] - T[i,j-1])/dy
 
-            ;D_ipj = D(kPer,kPar,b1,b2)
-            ;q_ipj = [0,0]
-            ;q_ipj[0] = -( D_ipj[0,0] * dTdx_ipj + D_ipj[1,0] * dTdy_ipj )
-            ;q_ipj[1] = -( D_ipj[0,1] * dTdx_ipj + D_ipj[1,1] * dTdy_ipj )
+                ; Heat conduction term
+                ; q = -D.\/(T) where D is a 2x2 tensor
 
-            ;_b = b(xm,y[j])
-            ;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-            ;b1 = _b[0]
-            ;b2 = _b[1]
+                ; x plus / minus terms
+                _b = get_b(xp,y[j])
+                _b = _b/mag(_b)
 
-            ;D_imj = D(kPer,kPar,b1,b2)
-            ;q_imj = [0,0]
-            ;q_imj[0] = -( D_imj[0,0] * dTdx_imj + D_imj[1,0] * dTdy_imj )
-            ;q_imj[1] = -( D_imj[0,1] * dTdx_imj + D_imj[1,1] * dTdy_imj )
+                D_ipj = get_D(kPer,kPar,_b)
+                q_ipj = -DdotGradT( D_ipj, [dTdx_ipj, dTdy_ipj] )
 
-            ;; y plus / minus terms
-            ;_b = b(x[i],yp)
-            ;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-            ;b1 = _b[0]
-            ;b2 = _b[1]
+                _b = get_b(xm,y[j])
+                _b = _b/mag(_b)
 
-            ;D_ijp = D(kPer,kPar,b1,b2)
-            ;q_ijp = [0,0]
-            ;q_ijp[0] = -( D_ijp[0,0] * dTdx_ijp + D_ijp[1,0] * dTdy_ijp )
-            ;q_ijp[1] = -( D_ijp[0,1] * dTdx_ijp + D_ijp[1,1] * dTdy_ijp )
+                D_imj = get_D(kPer,kPar,_b)
+                q_imj = -DdotGradT( D_imj, [dTdx_imj, dTdy_imj] )
 
-            ;_b = b(x[i],ym)
-            ;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-            ;b1 = _b[0]
-            ;b2 = _b[1]
+                ; y plus / minus terms
+                _b = get_b(x[i],yp)
+                _b = _b/mag(_b)
 
-            ;D_ijm = D(kPer,kPar,b1,b2)
-            ;q_ijm = [0,0]
-            ;q_ijm[0] = -( D_ijm[0,0] * dTdx_ijm + D_ijm[1,0] * dTdy_ijm )
-            ;q_ijm[1] = -( D_ijm[0,1] * dTdx_ijm + D_ijm[1,1] * dTdy_ijm )
+                D_ijp = get_D(kPer,kPar,_b)
+                q_ijp = -DdotGradT( D_ijp, [dTdx_ijp, dTdy_ijp] )
 
-            ;; Diffusion term
-            ;; -\/.q
+                _b = get_b(x[i],ym)
+                _b = _b/mag(_b)
 
-            ;divq = (q_ipj[0] - q_imj[0])/dx + (q_ijp[1]-q_ijm[1])/dy
+                D_ijm = get_D(kPer,kPar,_b)
+                q_ijm = -DdotGradT( D_ijm, [dTdx_ijm, dTdy_ijm] )
 
+                ; Diffusion term
+                ; -\/.q
 
-            ; Symmetric scheme  
-            ; ----------------
+                divq = (q_ipj[0] - q_imj[0])/dx + (q_ijp[1]-q_ijm[1])/dy
 
-            dTdx_ipjp = (T[i+1,j+1] + T[i+1,j] - T[i,j+1] - T[i,j]) / (2*dx)    
-            dTdy_ipjp = (T[i,j+1] + T[i+1,j+1] - T[i+1,j] -T[i,j]) / (2*dy)
+            endif else begin
 
-            dTdx_ipjm = (T[i+1,j] + T[i+1,j-1] - T[i,j] - T[i,j-1]) / (2*dx)    
-            dTdy_ipjm = (T[i,j] + T[i+1,j] - T[i+1,j-1] -T[i,j-1]) / (2*dy)
+                ; Symmetric scheme  
+                ; ----------------
 
-            dTdx_imjp = (T[i,j+1] + T[i,j] - T[i-1,j+1] - T[i-1,j]) / (2*dx)    
-            dTdy_imjp = (T[i-1,j+1] + T[i,j+1] - T[i,j] -T[i-1,j]) / (2*dy)
+                dTdx_ipjp = (T[i+1,j+1] + T[i+1,j] - T[i,j+1] - T[i,j]) / (2*dx)    
+                dTdy_ipjp = (T[i,j+1] + T[i+1,j+1] - T[i+1,j] -T[i,j]) / (2*dy)
 
-            dTdx_imjm = (T[i,j] + T[i,j-1] - T[i-1,j] - T[i-1,j-1]) / (2*dx)    
-            dTdy_imjm = (T[i-1,j] + T[i,j] - T[i,j-1] -T[i-1,j-1]) / (2*dy)
+                dTdx_ipjm = (T[i+1,j] + T[i+1,j-1] - T[i,j] - T[i,j-1]) / (2*dx)    
+                dTdy_ipjm = (T[i,j] + T[i+1,j] - T[i+1,j-1] -T[i,j-1]) / (2*dy)
+
+                dTdx_imjp = (T[i,j+1] + T[i,j] - T[i-1,j+1] - T[i-1,j]) / (2*dx)    
+                dTdy_imjp = (T[i-1,j+1] + T[i,j+1] - T[i,j] -T[i-1,j]) / (2*dy)
+
+                dTdx_imjm = (T[i,j] + T[i,j-1] - T[i-1,j] - T[i-1,j-1]) / (2*dx)    
+                dTdy_imjm = (T[i-1,j] + T[i,j] - T[i,j-1] -T[i-1,j-1]) / (2*dy)
 
 
-            _b = get_b(xp,yp)
-            _b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+                _b = get_b(xp,yp)
+                _b = _b/mag(_b)
 
-            D_ipjp = get_D(kPer,kPar,_b)
-            q_ipjp = -DdotGradT( D_ipjp, [dTdx_ipjp,dTdy_ipjp] )
+                D_ipjp = get_D(kPer,kPar,_b)
+                q_ipjp = -DdotGradT( D_ipjp, [dTdx_ipjp,dTdy_ipjp] )
 
-            _b = get_b(xp,ym)
-            _b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+                _b = get_b(xp,ym)
+                _b = _b/mag(_b)
 
-            D_ipjm = get_D(kPer,kPar,_b)
-            q_ipjm = -DdotGradT( D_ipjm, [dTdx_ipjm,dTdy_ipjm] )
+                D_ipjm = get_D(kPer,kPar,_b)
+                q_ipjm = -DdotGradT( D_ipjm, [dTdx_ipjm,dTdy_ipjm] )
 
-            _b = get_b(xm,yp)
-            _b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+                _b = get_b(xm,yp)
+                _b = _b/mag(_b)
 
-            D_imjp = get_D(kPer,kPar,_b)
-            q_imjp = -DdotGradT( D_imjp, [dTdx_imjp,dTdy_imjp] )
+                D_imjp = get_D(kPer,kPar,_b)
+                q_imjp = -DdotGradT( D_imjp, [dTdx_imjp,dTdy_imjp] )
 
-            _b = get_b(xm,ym)
-            _b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+                _b = get_b(xm,ym)
+                _b = _b/mag(_b)
 
-            D_imjm = get_D(kPer,kPar,_b)
-            q_imjm = -DdotGradT( D_imjm, [dTdx_imjp,dTdy_imjm] )
+                D_imjm = get_D(kPer,kPar,_b)
+                q_imjm = -DdotGradT( D_imjm, [dTdx_imjp,dTdy_imjm] )
 
 
-            divq = (q_ipjp[0] + q_ipjm[0] - q_imjp[0] - q_imjm[0]) / (2*dx) $
-                + (q_ipjp[1] + q_imjp[1] - q_imjm[1] - q_ipjm[1]) / (2*dy)
+                divq = (q_ipjp[0] + q_ipjm[0] - q_imjp[0] - q_imjm[0]) / (2*dx) $
+                    + (q_ipjp[1] + q_imjp[1] - q_imjm[1] - q_ipjm[1]) / (2*dy)
 
+            endelse
 
             TUpdate[i,j] = dt * (-divq + Q[i,j])
 
@@ -296,7 +292,6 @@ stop
 
     bndry = {x:bndry_x,y:bndry_y,b:boundary}
 
-    ;common bfield, b
     b = { x: x, y: y, bx : bx, by : by, bz: bx*0, psi:psi }
 
     ; Estimate appropriate 1-D length for a single timestep
@@ -309,7 +304,7 @@ stop
     
     lPar = nCFL * sqrt(kPar * dt / 0.4) 
 
-    dS = 0.005
+    dS = 0.001
 
     __n = 2*nCFL-1
     d1 = { $
@@ -379,7 +374,7 @@ stop
                 nT = 1
                 _T = heat1d(d.s,_T,_Q,k,dT/2,nT,cfl=cfl,plot=0) 
 
-                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                T2[i,j] = interpol(_T,d.s,0,/spline) ; get T at the actual point
 
             endfor
         endfor
@@ -401,7 +396,7 @@ stop
                 nT = 1
                 _T = heat1d(d.s,_T,_Q,k,dt/2,nT,cfl=cfl,plot=0) 
 
-                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                T2[i,j] = interpol(_T,d.s,0,/spline) ; get T at the actual point
 
             endfor
         endfor
