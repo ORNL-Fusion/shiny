@@ -1,3 +1,23 @@
+function DdotGradT, D, gradT
+
+	q = [0,0]
+	q[0] = D[0,0] * gradT[0] + D[1,0] * gradT[1]
+	q[1] = D[0,1] * gradT[0] + D[1,1] * gradT[1]
+
+	return, q
+	
+end
+
+
+function D, kPer, kPar, bu 
+	b1 = bu[0]
+	b2 = bu[1]
+	return, [$
+		[ kPar*b1^2 + kPer*b2^2, 	(kPar-kPer)*b1*b2 ],$
+		[ (kPar-kPer)*b1*b2, 		kPer*b1^2 + kPar*b2^2 ]] 
+end
+
+
 function b, x, y
 
 	bx = +!pi*cos(!pi*x)*sin(!pi*y)
@@ -53,7 +73,6 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 	iiOutside = where(isInsideDomain eq 0, iiOutsideCnt)
 	iiThisPt = _n-1 ; this is the middle point
 
-    if keyword_set(crash) then stop
 
 	; Extract that part of the line within the boundary
 	; accounting for craziness, multiple intersections, etc
@@ -112,7 +131,8 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 		x2 = fLine_XY_all[0,iiIn]
 		y2 = fLine_XY_all[1,iiIn]
 
-		LeftEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y)
+		if crash then stop
+		LeftEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y,crash=crash)
 
 		sExtraBit = sqrt ( (x2-LeftEnd[0])^2+(y2-LeftEnd[1])^2) 
 		sLeft = s_all[iiIn] - sExtraBit
@@ -130,6 +150,7 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 		x2 = fLine_XY_all[0,iiIn]
 		y2 = fLine_XY_all[1,iiIn]
 
+		if crash then stop
 		RightEnd = dlg_line_polygon(x1,y1,x2,y2,bndry_x,bndry_y,crash=crash)
 
 		sExtraBit = sqrt ( (x2-RightEnd[0])^2+(y2-RightEnd[1])^2 ) 
@@ -147,8 +168,6 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
     d.s = sNew
     d.x = _fLine_x
     d.y = _fLine_y
-
-    if keyword_set(crash) then stop
 
 end
 
@@ -256,7 +275,7 @@ pro heat2d
     	; I'm unsure why I need to do this, bah.
     	resolve_routine, 'interpb', /either, /compile_full_file, /no_recompile
 
-	nX = 39
+	nX = 41 
 	nY = 41
 
     eqdsk = 0
@@ -346,19 +365,19 @@ pro heat2d
         T2 = T 
         TSolution = tFac(kPer,0) * psi
 
-        c=contour(psi,x,y,layout=[3,2,1],/fill,title='psi')
-        c=contour(TSolution,x,y,layout=[3,2,2],/current,/fill,title='T')
-        c=contour(Q,x,y,layout=[3,2,5],/current,/fill,title='Q')
-        v=vector(bx,by,x,y,layout=[3,2,6],/current,auto_color=1,rgb_table=10,auto_subsample=1,title='B')
+        c=contour(psi,x,y,layout=[2,2,1],/fill,title='psi')
+        c=contour(TSolution,x,y,layout=[2,2,2],/current,/fill,title='T')
+        c=contour(Q,x,y,layout=[2,2,3],/current,/fill,title='Q')
+        v=vector(bx,by,x,y,layout=[2,2,4],/current,auto_color=1,rgb_table=10,auto_subsample=1,title='B')
 
     endelse
 
 
-	CFL = 0.9 ; must be < 0.5 for this shitty explicit forward Euler time differencing
+	CFL = 0.3 ; must be < 0.5 for this shitty explicit forward Euler time differencing
     	_D = max(abs([kPer,kPar]))
     	dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-	nT = 300L
+	nT = 5000L
 
 	width = 400
 	height = 400
@@ -377,83 +396,134 @@ pro heat2d
 
 		TSolution = tFac(kPer,_t*dt) * psi
 
-		; Try the asymetric scheme by Gunter et al. 
+		; Try the scheme(s) of Gunter et al. 
 
 		TUpdate = fltArr(nX,nY)*0
 
 		for i=1,nX-2 do begin
 		for j=1,nY-2 do begin
+
 			; NOTE : 
 			; ipj -> [i+1/2,j]
 			; ijp -> [i,j+1/2]
 			; imj -> [i-1/2,j]
 			; ijm -> [i,j-1/2]
 
-			; Temperature gradient term
-
-			dTdx_ipj = (T[i+1,j] - T[i,j])/dx
-			dTdy_ipj = (T[i+1,j+1] + T[i,j+1] - T[i,j-1] - T[i+1,j-1]) / (4*dy)
-			dTdx_ijp = (T[i+1,j+1] + T[i+1,j] - T[i-1,j+1] - T[i-1,j]) / (4*dx)
-			dTdy_ijp = (T[i,j+1] - T[i,j])/dy
-
-			dTdx_imj = (T[i,j] - T[i-1,j])/dx
-			dTdy_imj = (T[i,j+1] + T[i-1,j+1] - T[i-1,j-1] - T[i,j-1]) / (4*dy)
-			dTdx_ijm = (T[i+1,j] + T[i+1,j-1] - T[i-1,j] - T[i-1,j-1]) / (4*dx)
-			dTdy_ijm = (T[i,j] - T[i,j-1])/dy
-
-			; Heat conduction term
-			; q = -D.\/(T) where D is a 2x2 tensor
-
-			; x plus / minus terms
 			xp = x[i]+dx/2
-			_b = b(xp,y[j])
-			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-			b1 = _b[0]
-			b2 = _b[1]
-
-			D_ipj = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
-			q_ipj = [0,0]
-			q_ipj[0] = -( D_ipj[0,0] * dTdx_ipj + D_ipj[1,0] * dTdy_ipj )
-			q_ipj[1] = -( D_ipj[0,1] * dTdx_ipj + D_ipj[1,1] * dTdy_ipj )
-
 			xm = x[i]-dx/2
-			_b = b(xm,y[j])
-			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-			b1 = _b[0]
-			b2 = _b[1]
-
-			D_imj = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
-			q_imj = [0,0]
-			q_imj[0] = -( D_imj[0,0] * dTdx_imj + D_imj[1,0] * dTdy_imj )
-			q_imj[1] = -( D_imj[0,1] * dTdx_imj + D_imj[1,1] * dTdy_imj )
-
-			; y plus / minus terms
 			yp = y[i]+dy/2
-			_b = b(x[i],yp)
-			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-			b1 = _b[0]
-			b2 = _b[1]
-
-			D_ijp = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
-			q_ijp = [0,0]
-			q_ijp[0] = -( D_ijp[0,0] * dTdx_ijp + D_ijp[1,0] * dTdy_ijp )
-			q_ijp[1] = -( D_ijp[0,1] * dTdx_ijp + D_ijp[1,1] * dTdy_ijp )
-
 			ym = y[i]-dy/2
-			_b = b(x[i],ym)
+
+			;; Asymmetric scheme
+			;; -----------------
+
+			;; Temperature gradient terms
+
+			;dTdx_ipj = (T[i+1,j] - T[i,j])/dx
+			;dTdy_ipj = (T[i+1,j+1] + T[i,j+1] - T[i,j-1] - T[i+1,j-1]) / (4*dy)
+			;dTdx_ijp = (T[i+1,j+1] + T[i+1,j] - T[i-1,j+1] - T[i-1,j]) / (4*dx)
+			;dTdy_ijp = (T[i,j+1] - T[i,j])/dy
+
+			;dTdx_imj = (T[i,j] - T[i-1,j])/dx
+			;dTdy_imj = (T[i,j+1] + T[i-1,j+1] - T[i-1,j-1] - T[i,j-1]) / (4*dy)
+			;dTdx_ijm = (T[i+1,j] + T[i+1,j-1] - T[i-1,j] - T[i-1,j-1]) / (4*dx)
+			;dTdy_ijm = (T[i,j] - T[i,j-1])/dy
+
+			;; Heat conduction term
+			;; q = -D.\/(T) where D is a 2x2 tensor
+
+			;; x plus / minus terms
+			;_b = b(xp,y[j])
+			;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			;b1 = _b[0]
+			;b2 = _b[1]
+
+			;D_ipj = D(kPer,kPar,b1,b2)
+			;q_ipj = [0,0]
+			;q_ipj[0] = -( D_ipj[0,0] * dTdx_ipj + D_ipj[1,0] * dTdy_ipj )
+			;q_ipj[1] = -( D_ipj[0,1] * dTdx_ipj + D_ipj[1,1] * dTdy_ipj )
+
+			;_b = b(xm,y[j])
+			;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			;b1 = _b[0]
+			;b2 = _b[1]
+
+			;D_imj = D(kPer,kPar,b1,b2)
+			;q_imj = [0,0]
+			;q_imj[0] = -( D_imj[0,0] * dTdx_imj + D_imj[1,0] * dTdy_imj )
+			;q_imj[1] = -( D_imj[0,1] * dTdx_imj + D_imj[1,1] * dTdy_imj )
+
+			;; y plus / minus terms
+			;_b = b(x[i],yp)
+			;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			;b1 = _b[0]
+			;b2 = _b[1]
+
+			;D_ijp = D(kPer,kPar,b1,b2)
+			;q_ijp = [0,0]
+			;q_ijp[0] = -( D_ijp[0,0] * dTdx_ijp + D_ijp[1,0] * dTdy_ijp )
+			;q_ijp[1] = -( D_ijp[0,1] * dTdx_ijp + D_ijp[1,1] * dTdy_ijp )
+
+			;_b = b(x[i],ym)
+			;_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+			;b1 = _b[0]
+			;b2 = _b[1]
+
+			;D_ijm = D(kPer,kPar,b1,b2)
+			;q_ijm = [0,0]
+			;q_ijm[0] = -( D_ijm[0,0] * dTdx_ijm + D_ijm[1,0] * dTdy_ijm )
+			;q_ijm[1] = -( D_ijm[0,1] * dTdx_ijm + D_ijm[1,1] * dTdy_ijm )
+
+			;; Diffusion term
+			;; -\/.q
+
+			;divq = (q_ipj[0] - q_imj[0])/dx + (q_ijp[1]-q_ijm[1])/dy
+
+
+			; Symmetric scheme	
+			; ----------------
+
+			dTdx_ipjp = (T[i+1,j+1] + T[i+1,j] - T[i,j+1] - T[i,j]) / (2*dx)	
+			dTdy_ipjp = (T[i,j+1] + T[i+1,j+1] - T[i+1,j] -T[i,j]) / (2*dy)
+
+			dTdx_ipjm = (T[i+1,j] + T[i+1,j-1] - T[i,j] - T[i,j-1]) / (2*dx)	
+			dTdy_ipjm = (T[i,j] + T[i+1,j] - T[i+1,j-1] -T[i,j-1]) / (2*dy)
+
+			dTdx_imjp = (T[i,j+1] + T[i,j] - T[i-1,j+1] - T[i-1,j]) / (2*dx)	
+			dTdy_imjp = (T[i-1,j+1] + T[i,j+1] - T[i,j] -T[i-1,j]) / (2*dy)
+
+			dTdx_imjm = (T[i,j] + T[i,j-1] - T[i-1,j] - T[i-1,j-1]) / (2*dx)	
+			dTdy_imjm = (T[i-1,j] + T[i,j] - T[i,j-1] -T[i-1,j-1]) / (2*dy)
+
+
+			_b = b(xp,yp)
 			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
-			b1 = _b[0]
-			b2 = _b[1]
 
-			D_ijm = [[ kPar*b1^2 + kPer*b2^2, (kPar-kPer)*b1*b2 ],[ (kPar-kPer)*b1*b2, kPer*b1^2 + kPar*b2^2 ]] 
-			q_ijm = [0,0]
-			q_ijm[0] = -( D_ijm[0,0] * dTdx_ijm + D_ijm[1,0] * dTdy_ijp )
-			q_ijm[1] = -( D_ijm[0,1] * dTdx_ijm + D_ijm[1,1] * dTdy_ijp )
+			D_ipjp = D(kPer,kPar,_b)
+			q_ipjp = -DdotGradT( D_ipjp, [dTdx_ipjp,dTdy_ipjp] )
 
-			; Diffusion term
-			; -\/.q
+			_b = b(xp,ym)
+			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
 
-			divq = (q_ipj[0] - q_imj[0])/dx + (q_ijp[1]-q_ijm[1])/dy
+			D_ipjm = D(kPer,kPar,_b)
+			q_ipjm = -DdotGradT( D_ipjm, [dTdx_ipjm,dTdy_ipjm] )
+
+			_b = b(xm,yp)
+			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+
+			D_imjp = D(kPer,kPar,_b)
+			q_imjp = -DdotGradT( D_imjp, [dTdx_imjp,dTdy_imjp] )
+
+			_b = b(xm,ym)
+			_b = _b/sqrt(_b[0]^2+_b[1]^2+_b[2]^2)
+
+			D_imjm = D(kPer,kPar,_b)
+			q_imjm = -DdotGradT( D_imjm, [dTdx_imjp,dTdy_imjm] )
+
+
+			divq = (q_ipjp[0] + q_ipjm[0] - q_imjp[0] - q_imjm[0]) / (2*dx) $
+				+ (q_ipjp[1] + q_imjp[1] - q_imjm[1] - q_ipjm[1]) / (2*dy)
+
 
 			TUpdate[i,j] = dt * (-divq + Q[i,j])
 
@@ -482,9 +552,8 @@ pro heat2d
 	p=plot(TSolution[*],fit,/over,$
 		title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
 
+
 stop
-
-
 	; Solve using the 1D set
     	; ----------------------
 
@@ -534,22 +603,22 @@ stop
 		for j=1,nY-2 do begin
 			points[i,j].x = x[i]
 			points[i,j].y = y[j]
+ 			crash=0 
+             		if i eq 19 and j eq 14 then crash = 1
 
-            par = points[i,j].par
-			getDomain, x[i],y[j], par, b, bndry, 0
-            points[i,j].par = par
+    			par = points[i,j].par
+			getDomain, x[i],y[j], par, b, bndry, 0, crash=crash
+            		points[i,j].par = par
             
-            per = points[i,j].per
-            crash=0
-            ;if i eq 17 and j eq 10 then crash = 1
+            		per = points[i,j].per
 			getDomain, x[i],y[j], per, b, bndry, 1, crash=crash
-            points[i,j].per = per
+            		points[i,j].per = per
 
-            plotMod = 4 
-            if i mod plotMod eq 0 and j mod plotMod eq 0 then begin
-                    p=plot(points[i,j].per.x,points[i,j].per.y,/over)
-                    p=plot(points[i,j].par.x,points[i,j].par.y,/over)
-            endif 
+            		plotMod = 4 
+            		if i mod plotMod eq 0 and j mod plotMod eq 0 then begin
+            		        p=plot(points[i,j].per.x,points[i,j].per.y,/over)
+            		        p=plot(points[i,j].par.x,points[i,j].par.y,/over)
+            		endif 
 		endfor
 	endfor
 
@@ -558,13 +627,11 @@ stop
     	T2[*,0]  = TSolution[*,0]
     	T2[*,-1] = TSolution[*,-1]
 
-    nItr = nT 
+    	nItr = nT 
 
 	c=contour(T2,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=51)
 
     for itr=0, nItr-1 do begin
-
-	if itr mod 50 eq 0 then print, itr, nItr    
 
         ; Solve parallel 
 

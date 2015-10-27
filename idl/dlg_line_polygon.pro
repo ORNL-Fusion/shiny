@@ -22,6 +22,7 @@ function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y, crash=crash
 	_DistToIntersections = sqrt((x2-px)^2+(y2-py)^2)
 
     ; catch for parallel line with polyon edge
+    if keyword_set(crash) then stop
 
     iiGood = where(_distToIntersections eq _distToIntersections, iiGoodCnt)
     if iiGoodCnt ne n_elements(_distToIntersections) then begin
