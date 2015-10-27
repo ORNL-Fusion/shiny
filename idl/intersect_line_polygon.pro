@@ -1,6 +1,6 @@
 ; Find intersection point of a line [(x1,y1),(x2,y2)] and a polygon
 
-function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y, crash=crash
+function intersect_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y, crash=crash
 
 	px = !null
 	py = !null
@@ -32,10 +32,10 @@ function dlg_line_polygon, x1, y1, x2, y2, bndry_x, bndry_y, crash=crash
     endif
 
 	iiPt = where(_DistToIntersections eq min(_DistToIntersections), iiPtCnt)
-	if iiPtCnt gt 1 or iiPt lt 0 then stop ; bugger
+	;if iiPtCnt gt 1 or iiPt[0] lt 0 then 
 
-	xLeft = px[iiPt]
-	yLeft = py[iiPt]
+	xLeft = px[iiPt[0]]
+	yLeft = py[iiPt[0]]
 
     if keyword_set(crash) then stop
 	return, [xLeft,yLeft]
