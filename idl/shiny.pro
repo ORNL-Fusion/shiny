@@ -98,11 +98,11 @@ pro shiny
     endelse
 
 
-    CFL = 0.1 ; must be < 1.0 for this shitty explicit forward Euler time differencing
+    CFL = 0.9 ; must be < 1.0 for this shitty explicit forward Euler time differencing
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 1500L
+    nT = 500L
 
     width = 400
     height = 400
@@ -121,14 +121,6 @@ pro shiny
 
         TSolution = tFac(kPer,_t*dt) * psi
 
-        ; Yeah, this should be zero, but numerically it's not. Just
-        ; doing this to see if it's the source of the instability.
-
-        T[0,*]  = TSolution[0,*]
-        T[-1,*] = TSolution[-1,*]
-        T[*,0]  = TSolution[*,0]
-        T[*,-1] = TSolution[*,-1]
- 
         ; Try the scheme(s) of Gunter et al. 
 
         TUpdate = fltArr(nX,nY)*0
@@ -346,10 +338,6 @@ stop
         endfor
     endfor
 
-    T2[0,*]  = TSolution[0,*]
-    T2[-1,*] = TSolution[-1,*]
-    T2[*,0]  = TSolution[*,0]
-    T2[*,-1] = TSolution[*,-1]
 
     nItr = nT 
 
@@ -368,7 +356,7 @@ stop
                 ; Get T along parallel domain 
 
                 _T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
-                    _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
                 nT = 1
@@ -390,7 +378,7 @@ stop
                 ; Get T along parallel domain 
 
                 _T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
-                    _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
                 nT = 1
