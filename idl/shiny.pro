@@ -77,7 +77,7 @@ pro shiny
         bz = bx*0
 
         kPer = 1
-        kPar = 1e9
+        kPar = 1e12
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -102,7 +102,7 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 500L
+    nT = 100L
 
     width = 400
     height = 400
@@ -141,7 +141,7 @@ pro shiny
 
             symmetric = 0
 
-            if symmetric then begin
+            if not symmetric then begin
 
                 ; Asymmetric scheme
                 ; -----------------
@@ -254,6 +254,8 @@ pro shiny
                     c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=50)
             frame = c.CopyWindow()
             !null = oVid.put(vidStream, frame)
+			time = dt * nT
+			save, T, time, _t, dt, nT, fileName='gunter.sav'
         endif
 
     endfor  
@@ -264,19 +266,18 @@ pro shiny
 
     l2 = norm(TSolution-T,lNorm=2)
     dkPer = 1/T[nX/2,nY/2]-kPer
-    p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none',aspect_ratio=1.0)
+    p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none')
     r=regress(TSolution[*],T[*],yfit=fit)
     p=plot(TSolution[*],fit,/over,$
         title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
 
 
-stop
     ; Solve using the 1D set
     ; ----------------------
 
     oVid2 = IDLffVideoWrite('operator-split.webm')
     fps = 4 
-    vidStream2 = oVid2.AddVideoStream(width, height, fps)
+    vidStream2 = oVid2.AddVideoStream(width*2, height, fps)
 
     bndry_x = [xMin,xMax,xMax,xMin,xMin]
     bndry_y = [yMin,yMin,yMax,yMax,yMin]
@@ -295,15 +296,18 @@ stop
     nCFL = 10 ; i.e., number of grid points in the 1-D domain
     
     lPar = nCFL * sqrt(kPar * dt / 0.4) 
+    lPer = nCFL * sqrt(kPer * dt / 0.4) 
 
-    dS = 0.001
+	n1DTrace = 300
+    dSPar = lPar / n1dTrace
+    dSPer = lPer / n1dTrace
 
     __n = 2*nCFL-1
     d1 = { $
         N: __n, $
         x: fltArr(__n), $
         y: fltArr(__n), $
-        dS: dS, $
+        dS: dSPar, $
         s: fltArr(__n), $
         kx: fltArr(__n), $
         ky: fltArr(__n), $
@@ -317,8 +321,14 @@ stop
 
     for i=1,nX-2 do begin
         for j=1,nY-2 do begin
+
             points[i,j].x = x[i]
             points[i,j].y = y[j]
+			points[i,j].par.L = lPar
+			points[i,j].per.L = lPer
+			points[i,j].par.dS = dsPar
+			points[i,j].per.dS = dsPer
+    
             crash=0 
             ;if i eq 19 and j eq 14 then crash = 1
 
@@ -341,9 +351,16 @@ stop
 
     nItr = nT 
 
-    c=contour(T2,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=51)
+    c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
 
     for itr=0, nItr-1 do begin
+
+    	TSolution = tFac(kPer,nItr*dt) * psi
+
+		TSolution[0,*]=0
+		TSolution[-1,*]=0
+		TSolution[*,0]=0
+		TSolution[*,-1]=0
 
         ; Solve parallel 
 
@@ -360,7 +377,7 @@ stop
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
                 nT = 1
-                _T = heat1d(d.s,_T,_Q,k,dT/2,nT,cfl=cfl,plot=0) 
+                _T = heat1d(d.s,_T,_Q,k,dT/2,nT,cfl=cfl,plot=0,CN=1) 
 
                 T2[i,j] = interpol(_T,d.s,0,/spline) ; get T at the actual point
 
@@ -393,9 +410,14 @@ stop
         if itr mod 50 eq 0 and itr gt 0 then begin
             if itr gt 0 then c.erase
                     print, itr, nItr    
-                    c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=51)
+                    c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
+                    c=contour(T2[1:-2,1:-2]/TSolution[1:-2,1:-2],x[1:-2],y[1:-2],$
+						/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
+
             frame = c.CopyWindow()
             !null = oVid2.put(vidStream2, frame)
+			time = dt * itr
+			save, T2, time, itr, dt, nItr, fileName='op-split.sav'
         endif
     endfor
 
@@ -404,11 +426,17 @@ stop
 
     TSolution = tFac(kPer,nItr*dt) * psi
 
+	TSolution[0,*]=0
+	TSolution[-1,*]=0
+	TSolution[*,0]=0
+	TSolution[*,-1]=0
+
     l2 = norm(TSolution-T2,lNorm=2)
-    p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none',aspect_ratio=1.0)
+    p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
     r=regress(TSolution[*],T2[*],yfit=fit)
     p=plot(TSolution[*],fit,/over,$
         title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
+
 
 stop
 end
