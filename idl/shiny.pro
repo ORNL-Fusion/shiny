@@ -108,7 +108,7 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 100000L
+    nT = 1000L
 
     width = 400
     height = 400
@@ -302,7 +302,7 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-    nCFL = 400 ; i.e., number of grid points in the 1-D domain
+    nCFL = 40 ; i.e., number of grid points in the 1-D domain
     
     lPar = nCFL * sqrt(kPar * dt / 0.4) 
     lPer = nCFL * sqrt(kPer * dt / 0.4) 
@@ -375,6 +375,8 @@ pro shiny
 		TSolution[*,0]=0
 		TSolution[*,-1]=0
 
+		now = (itr+1)*dt_im/2
+
         ; Solve parallel 
 
         T2_copy = T2
@@ -393,13 +395,12 @@ pro shiny
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
 
-				lookAt1D = 1
+				lookAt1D = 0
 				if lookAt1D then begin
 					TT = _T
 					__T = _T
-					now = (itr+1)*dt_im/2
 					_T[0] = getTa(d.x[0],d.y[0],kPer,now)
-					_T[0] = getTa(d.x[-1],d.y[-1],kPer,now)
+					_T[-1] = getTa(d.x[-1],d.y[-1],kPer,now)
                 	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
                 	_T2 = heat1d(d.s,TT,_Q,k,dt,dt_im/dt/2,cfl=cfl,plot=0,CN=0,BT=0) 
 					_Ta = tFac(kPer,(itr+1)*dt_im/2) * getPsi(d.x,d.y) 
@@ -413,7 +414,9 @@ pro shiny
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-					 _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
+					_T[0] = 0;getTa(d.x[0],d.y[0],kPer,now)
+					_T[-1] = 0;getTa(d.x[-1],d.y[-1],kPer,now)
+					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
 				endelse
 
                 T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
@@ -440,6 +443,8 @@ pro shiny
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
                 _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
 
+				_T[0] = 0;getTa(d.x[0],d.y[0],kPer,now)
+				_T[-1] = 0;getTa(d.x[-1],d.y[-1],kPer,now)
                 T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
 
             endfor

@@ -44,6 +44,9 @@ function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT
 			A[inr,inr-1] = cc 
 			A[inr,inr] = aa 
 
+			A[0,0] = 1
+			A[-1,-1] = 1
+
 			;cc = -k[inr]/(2*ds^2)
 			;bb = 1/dt + k[inr]/ds^2 
 			;aa = cc 
@@ -75,11 +78,13 @@ function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT
 				dd = 1/dt * T[inr] + Q[inr]				
 			endelse
 			B[inr] = dd
+			B[0] = T[0]
+			B[-1] = T[-1]
 
-			TNew = la_linear_equation(A[1:-2,1:-2],B[1:-2],/double,status=status)
+			TNew = la_linear_equation(A,B,/double,status=status)
 			if status ne 0 then stop
 	
-			T[inr] = TNew
+			T[inr] = TNew[inr]
 
 		endfor
 
