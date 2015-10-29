@@ -1,0 +1,319 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		C7220BFC1BE1931500DDB23B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C7220BFB1BE1931500DDB23B /* main.cpp */; };
+		C7220C011BE1937B00DDB23B /* shiny.cl in Sources */ = {isa = PBXBuildFile; fileRef = C7220C001BE1937B00DDB23B /* shiny.cl */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		C7220BF71BE1931500DDB23B /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+		C7FD32C41BE12E6100428049 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = /usr/share/man/man1/;
+			dstSubfolderSpec = 0;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 1;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		C7220BF91BE1931500DDB23B /* shinycl */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = shinycl; sourceTree = BUILT_PRODUCTS_DIR; };
+		C7220BFB1BE1931500DDB23B /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
+		C7220C001BE1937B00DDB23B /* shiny.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = shiny.cl; sourceTree = "<group>"; };
+		C7FD32C61BE12E6100428049 /* ShinyCL */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ShinyCL; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C7220BF61BE1931500DDB23B /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C7FD32C31BE12E6100428049 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		C7220BFA1BE1931500DDB23B /* shinycl */ = {
+			isa = PBXGroup;
+			children = (
+				C7220BFB1BE1931500DDB23B /* main.cpp */,
+				C7220C001BE1937B00DDB23B /* shiny.cl */,
+			);
+			path = shinycl;
+			sourceTree = "<group>";
+		};
+		C7FD32BD1BE12E6100428049 = {
+			isa = PBXGroup;
+			children = (
+				C7220BFA1BE1931500DDB23B /* shinycl */,
+				C7FD32C71BE12E6100428049 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		C7FD32C71BE12E6100428049 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				C7FD32C61BE12E6100428049 /* ShinyCL */,
+				C7220BF91BE1931500DDB23B /* shinycl */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		C7220BF81BE1931500DDB23B /* shinycl */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C7220BFF1BE1931500DDB23B /* Build configuration list for PBXNativeTarget "shinycl" */;
+			buildPhases = (
+				C7220BF51BE1931500DDB23B /* Sources */,
+				C7220BF61BE1931500DDB23B /* Frameworks */,
+				C7220BF71BE1931500DDB23B /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = shinycl;
+			productName = shinycl;
+			productReference = C7220BF91BE1931500DDB23B /* shinycl */;
+			productType = "com.apple.product-type.tool";
+		};
+		C7FD32C51BE12E6100428049 /* ShinyCL */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = C7FD32CD1BE12E6100428049 /* Build configuration list for PBXNativeTarget "ShinyCL" */;
+			buildPhases = (
+				C7FD32C21BE12E6100428049 /* Sources */,
+				C7FD32C31BE12E6100428049 /* Frameworks */,
+				C7FD32C41BE12E6100428049 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ShinyCL;
+			productName = "Shiny++";
+			productReference = C7FD32C61BE12E6100428049 /* ShinyCL */;
+			productType = "com.apple.product-type.tool";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C7FD32BE1BE12E6100428049 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0710;
+				ORGANIZATIONNAME = "Cianciosa, Mark R.";
+				TargetAttributes = {
+					C7220BF81BE1931500DDB23B = {
+						CreatedOnToolsVersion = 7.1;
+					};
+					C7FD32C51BE12E6100428049 = {
+						CreatedOnToolsVersion = 7.1;
+					};
+				};
+			};
+			buildConfigurationList = C7FD32C11BE12E6100428049 /* Build configuration list for PBXProject "ShinyCL" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = English;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+			);
+			mainGroup = C7FD32BD1BE12E6100428049;
+			productRefGroup = C7FD32C71BE12E6100428049 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				C7FD32C51BE12E6100428049 /* ShinyCL */,
+				C7220BF81BE1931500DDB23B /* shinycl */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C7220BF51BE1931500DDB23B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C7220C011BE1937B00DDB23B /* shiny.cl in Sources */,
+				C7220BFC1BE1931500DDB23B /* main.cpp in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		C7FD32C21BE12E6100428049 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		C7220BFD1BE1931500DDB23B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		C7220BFE1BE1931500DDB23B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		C7FD32CB1BE12E6100428049 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		C7FD32CC1BE12E6100428049 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_IDENTITY = "-";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 10.10;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		C7FD32CE1BE12E6100428049 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_X86_VECTOR_INSTRUCTIONS = avx2;
+				PRODUCT_NAME = ShinyCL;
+			};
+			name = Debug;
+		};
+		C7FD32CF1BE12E6100428049 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_X86_VECTOR_INSTRUCTIONS = avx2;
+				PRODUCT_NAME = ShinyCL;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		C7220BFF1BE1931500DDB23B /* Build configuration list for PBXNativeTarget "shinycl" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7220BFD1BE1931500DDB23B /* Debug */,
+				C7220BFE1BE1931500DDB23B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+		};
+		C7FD32C11BE12E6100428049 /* Build configuration list for PBXProject "ShinyCL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7FD32CB1BE12E6100428049 /* Debug */,
+				C7FD32CC1BE12E6100428049 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C7FD32CD1BE12E6100428049 /* Build configuration list for PBXNativeTarget "ShinyCL" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C7FD32CE1BE12E6100428049 /* Debug */,
+				C7FD32CF1BE12E6100428049 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C7FD32BE1BE12E6100428049 /* Project object */;
+}
