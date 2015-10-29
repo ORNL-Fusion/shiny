@@ -21,8 +21,8 @@ function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT
 	;T[0] = (-2*T[1] + 0.5*T[2])/(-1.5) ; dT/dS = 0 second order accurate forward difference 
 	;T[-1] = (+2*T[-2] - 0.5*T[-3])/(+1.5) ; dT/dS = 0 second order accurate backward difference
 
-    T[0] = 0.0 
-	T[-1] = 0.0
+    ;T[0] = 0.0 
+	;T[-1] = 0.0
 
 	if useCN or useBT then begin
 	; Crank-Nicolson or Implicit Euler (BTCS) temporal scheme

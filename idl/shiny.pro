@@ -1,3 +1,16 @@
+function getPsi, x, y
+	return, cos(!dpi*x) * cos(!dpi*y)
+end
+
+function getQ, x, y
+	lap = -2*!pi^2*getPsi(x,y) ; analytic Laplacian(psi)
+	return, -lap
+end
+
+function getTa, x, y, kPer, t
+	return, tFac(kPer,t) * getPsi(x,y) 
+end
+
 pro shiny
 
     resolve_routine, 'interpb', /either, /compile_full_file
@@ -59,16 +72,9 @@ pro shiny
         y2D = transpose(rebin(y,nY,nX))
         dY = y[1]-y[0]
     
-        psi = cos(!dpi*x2D) * cos(!dpi*y2D)
-        grad, psi, x, y, gradX, gradY
-        ;lap = laplacian( psi, x, y)
-        lap = -2*!pi^2*psi ; analytic Laplacian(psi)
+        psi = getPsi(x2D,y2D)
 
         ; b = zUnit x grad(psi)
-
-        ;bx = -gradY
-        ;by = +gradX
-        ;bz = bx*0
 
         ; Use analytic expression for b instead
 
@@ -84,7 +90,7 @@ pro shiny
         byU = by / bMag
         bzU = bz / bMag
 
-        Q = -lap 
+        Q = getQ(x2d,y2d) 
 
         T = fltArr(nX,nY)
         T2 = T 
@@ -102,7 +108,7 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 10000L
+    nT = 100000L
 
     width = 400
     height = 400
@@ -296,12 +302,12 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-    nCFL = 50 ; i.e., number of grid points in the 1-D domain
+    nCFL = 400 ; i.e., number of grid points in the 1-D domain
     
     lPar = nCFL * sqrt(kPar * dt / 0.4) 
     lPer = nCFL * sqrt(kPer * dt / 0.4) 
 
-	n1DTrace = 300
+	n1DTrace = 900
     dSPar = lPar / n1dTrace
     dSPer = lPer / n1dTrace
 
@@ -352,7 +358,7 @@ pro shiny
     endfor
 
 
-	nT_im = 100 
+	nT_im = 50 
 	dT_im = dt*nT/nT_im
 
 	print, 'dt_im / dt : ',dT_im / dt
@@ -379,14 +385,38 @@ pro shiny
 
                 ; Get T along parallel domain 
 
-                _T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
-                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
+				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
+
+                _T  = interpolate ( T2_copy, _i, _j, cubic = 0 )
+				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
- 
-                _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=0,BT=1) 
 
-                T2[i,j] = interpol(_T,d.s,0,/spline) ; get T at the actual point
+				lookAt1D = 1
+				if lookAt1D then begin
+					TT = _T
+					__T = _T
+					now = (itr+1)*dt_im/2
+					_T[0] = getTa(d.x[0],d.y[0],kPer,now)
+					_T[0] = getTa(d.x[-1],d.y[-1],kPer,now)
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
+                	_T2 = heat1d(d.s,TT,_Q,k,dt,dt_im/dt/2,cfl=cfl,plot=0,CN=0,BT=0) 
+					_Ta = tFac(kPer,(itr+1)*dt_im/2) * getPsi(d.x,d.y) 
+
+                	__Q  = interpolate ( Q, _i, _j, cubic = 0, /double )
+					p=plot(d.s,__T,layout=[3,1,1])
+					p=plot(d.s,_Ta,layout=[3,1,2],/current,color='g',thick=3)
+					p=plot(d.s,_T2,/over,color='b')
+					p=plot(d.s,_T,/over)
+					p=plot(d.s,_Q,layout=[3,1,3],/current)
+					p=plot(d.s,__Q,/over,color='b')
+					stop
+				endif else begin
+					 _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
+				endelse
+
+                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
 
             endfor
         endfor
@@ -401,13 +431,16 @@ pro shiny
 
                 ; Get T along parallel domain 
 
-                _T  = interpolate ( T2_copy, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
-                _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
+				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
+
+                _T  = interpolate ( T2_copy, _i, _j, cubic = 0 )
+				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
-                _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=0,BT=1) 
+                _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
 
-                T2[i,j] = interpol(_T,d.s,0,/spline) ; get T at the actual point
+                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
 
             endfor
         endfor
