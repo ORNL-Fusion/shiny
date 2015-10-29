@@ -57,6 +57,8 @@ function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT
 
 		endif else begin
 
+            ; http://www.nada.kth.se/~jjalap/numme/FDheat.pdf         
+
 			cc = -k[inr]/ds^2 
 			bb = 1/dt + 2*k[inr]/ds^2
 			aa = cc 

@@ -1,16 +1,3 @@
-function getPsi, x, y
-	return, cos(!dpi*x) * cos(!dpi*y)
-end
-
-function getQ, x, y
-	lap = -2*!pi^2*getPsi(x,y) ; analytic Laplacian(psi)
-	return, -lap
-end
-
-function getTa, x, y, kPer, t
-	return, tFac(kPer,t) * getPsi(x,y) 
-end
-
 pro shiny
 
     resolve_routine, 'interpb', /either, /compile_full_file
@@ -365,6 +352,8 @@ pro shiny
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
 
+	lookAt1D = 0
+    useAnalyticBCs = 1
 	plotMod = 1
     for itr=0, nT_im-1 do begin
 
@@ -375,9 +364,10 @@ pro shiny
 		TSolution[*,0]=0
 		TSolution[*,-1]=0
 
-		now = (itr+1)*dt_im/2
-
         ; Solve parallel 
+
+		tNow = (itr)*dt_im 
+		tNext = tNow + dt_im/2
 
         T2_copy = T2
         for i=1,nX-2 do begin ; don't do the boundary pts
@@ -395,7 +385,6 @@ pro shiny
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
 
-				lookAt1D = 0
 				if lookAt1D then begin
 					TT = _T
 					__T = _T
@@ -414,8 +403,14 @@ pro shiny
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-					_T[0] = 0;getTa(d.x[0],d.y[0],kPer,now)
-					_T[-1] = 0;getTa(d.x[-1],d.y[-1],kPer,now)
+                    if useAnalyticBCs then begin
+                        ; See http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
+					    _T[0] = (getTa(d.x[0],d.y[0],kPer,tNow)+getTa(d.x[0],d.y[0],kPer,tNext))/2
+					    _T[-1] = (getTa(d.x[-1],d.y[-1],kPer,tNow)+getTa(d.x[-1],d.y[-1],kPer,tNext))/2
+                    endif else begin
+					    _T[0] = 0 
+					    _T[-1] = 0
+                    endelse
 					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
 				endelse
 
@@ -425,6 +420,9 @@ pro shiny
         endfor
 
         ; Solve perp
+
+		tNow = (itr)*dt_im + dt_im/2
+		tNext = tNow + dt_im/2
 
         T2_copy = T2
         for i=1,nX-2 do begin ; don't do the boundary pts
@@ -441,10 +439,17 @@ pro shiny
 				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
+
+                if useAnalyticBCs then begin    
+	                _T[0] = (getTa(d.x[0],d.y[0],kPer,tNow)+getTa(d.x[0],d.y[0],kPer,tNext))/2
+				    _T[-1] = (getTa(d.x[-1],d.y[-1],kPer,tNow)+getTa(d.x[-1],d.y[-1],kPer,tNext))/2
+                endif else begin
+	                _T[0] = 0 
+				    _T[-1] = 0
+                endelse
+
                 _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
 
-				_T[0] = 0;getTa(d.x[0],d.y[0],kPer,now)
-				_T[-1] = 0;getTa(d.x[-1],d.y[-1],kPer,now)
                 T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
 
             endfor
