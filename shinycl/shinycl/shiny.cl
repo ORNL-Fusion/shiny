@@ -36,11 +36,11 @@ float2 dDotGradT(float kper, float kpar, float2 b, float2 gT) {
     return q;
 }
 
-kernel void stepTimeGunter(global float *t, global float *t_next,
-                           size_t nx, size_t ny,
-                           float xmin, float ymin,
-                           float dt, float dx, float dy,
-                           float kper, float kpar) {
+kernel void stepTimeGunterSym(global float *t, global float *t_next,
+                              size_t nx, size_t ny,
+                              float xmin, float ymin,
+                              float dt, float dx, float dy,
+                              float kper, float kpar) {
     size_t i = get_global_id(0);
     size_t j = get_global_id(1);
     
@@ -120,6 +120,6 @@ kernel void analytic(global float *t,
         
         float psi = cospi(x)*cospi(y);
         
-        t[k_ij] += (1.0 - exp(-2*kper*M_PI_F*M_PI_F*time))/kper*psi;
+        t[k_ij] = (1.0 - exp(-2*kper*M_PI_F*M_PI_F*time))/kper*psi;
     }
 }

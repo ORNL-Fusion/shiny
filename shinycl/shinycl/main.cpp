@@ -29,7 +29,9 @@ int main(int argc, const char * argv[]) {
     const cl_float dy = (ymax - ymin)/(ny - 1);
     
     const cl_float kper = 1.0;
-    const cl_float kpar = 1.0E10;
+    const cl_float kpar = 1.0E3;
+    
+    const size_t end_time = 1000;
     
     void *t_mem_object = gcl_malloc(sizeof(cl_float)*nx*ny, NULL, CL_MEM_WRITE_ONLY);
     void *t_next_mem_object = gcl_malloc(sizeof(cl_float)*nx*ny, NULL, CL_MEM_WRITE_ONLY);
@@ -40,14 +42,22 @@ int main(int argc, const char * argv[]) {
         gcl_get_kernel_block_workgroup_info(init_kernel, CL_KERNEL_WORK_GROUP_SIZE, sizeof(work_group_size), &work_group_size, NULL);
     });
     
+    size_t global_x_size = work_group_size;
+    size_t global_y_size = work_group_size;
+    
+    while (nx > global_x_size) {
+        global_x_size += work_group_size;
+    }
+    while (ny > global_y_size) {
+        global_y_size += work_group_size;
+    }
+    
     cl_ndrange range = {
         2,
         {0, 0, 0},
-        {work_group_size, work_group_size, 0},
-        {1, 1, 0}
+        {global_x_size, global_y_size, 0},
+        {global_x_size/work_group_size, global_y_size/work_group_size, 0}
     };
-    
-    
     
     dispatch_sync(gpu_queue, ^{
         init_kernel(&range, (cl_float *)t_mem_object, (cl_float *)t_next_mem_object, nx, ny);
@@ -55,38 +65,40 @@ int main(int argc, const char * argv[]) {
 
     const cl_float dt = 0.9/8.0*(dx*dx + dy*dy)/std::max(fabsf(kper), fabsf(kpar));
     
-    std::cout << "dt = " << dt << std::endl << std::endl;
+    std::cout << std::endl << "dt = " << dt << std::endl << std::endl;
     
-    const size_t end_time = 10000;
-    for (size_t time = 0; time < end_time; time++) {
+    for (size_t time = 0; time <= end_time; time++) {
         dispatch_async(gpu_queue, ^{
-            stepTimeGunter_kernel(&range, (cl_float *)t_mem_object, (cl_float *)t_next_mem_object,
-                                  nx, ny, xmin, ymin, dt, dx, dy, kper, kpar);
+            stepTimeGunterSym_kernel(&range, (cl_float *)t_mem_object, (cl_float *)t_next_mem_object,
+                                     nx, ny, xmin, ymin, dt, dx, dy, kper, kpar);
             update_kernel(&range, (cl_float *)t_mem_object, (cl_float *)t_next_mem_object, nx, ny);
         });
     }
 
+    dispatch_async(gpu_queue, ^{
+        const cl_float final_time = dt*end_time;
+        analytic_kernel(&range, (cl_float *)t_analytic_mem_object,
+                        nx, ny, xmin, ymin, final_time, dx, dy, kper);
+    });
+    
     cl_float *t_host_mem = new cl_float[nx*ny];
     cl_float *t_analytic_host_mem = new cl_float[nx*ny];
     dispatch_sync(gpu_queue, ^{
-        analytic_kernel(&range, (cl_float *)t_analytic_mem_object,
-                        nx, ny, xmin, ymin, dt*999, dx, dy, kper);
-        
         gcl_memcpy(t_analytic_host_mem, t_analytic_mem_object, sizeof(cl_float)*nx*ny);
         gcl_memcpy(t_host_mem, t_mem_object, sizeof(cl_float)*nx*ny);
     });
     
-//    for (size_t i = 0, e = nx*ny; i < e; i++) {
-//        std::cout << t_host_mem[i] << " " << t_analytic_host_mem << std::endl;
-//    }
-    
-    for (size_t i = 0; i < nx; i++) {
-        for (size_t j = 0; j < ny; j++) {
-            size_t k = i*ny + j;
-            std::cout << t_host_mem[k] << " ";
-        }
-        std::cout << std::endl;
+    for (size_t i = 0, e = nx*ny; i < e; i++) {
+        std::cout << t_host_mem[i] << " " << t_analytic_host_mem[i] << std::endl;
     }
+    
+//    for (size_t i = 0; i < nx; i++) {
+//        for (size_t j = 0; j < ny; j++) {
+//            size_t k = i*ny + j;
+//            std::cout << t_host_mem[k] << " ";
+//        }
+//        std::cout << std::endl;
+//    }
     
     gcl_free(t_mem_object);
     gcl_free(t_next_mem_object);

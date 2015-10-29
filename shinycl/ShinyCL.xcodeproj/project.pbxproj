@@ -21,33 +21,16 @@
 			);
 			runOnlyForDeploymentPostprocessing = 1;
 		};
-		C7FD32C41BE12E6100428049 /* CopyFiles */ = {
-			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 1;
-		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		C7220BF91BE1931500DDB23B /* shinycl */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = shinycl; sourceTree = BUILT_PRODUCTS_DIR; };
 		C7220BFB1BE1931500DDB23B /* main.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		C7220C001BE1937B00DDB23B /* shiny.cl */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.opencl; path = shiny.cl; sourceTree = "<group>"; };
-		C7FD32C61BE12E6100428049 /* ShinyCL */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = ShinyCL; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
 		C7220BF61BE1931500DDB23B /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C7FD32C31BE12E6100428049 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -77,7 +60,6 @@
 		C7FD32C71BE12E6100428049 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				C7FD32C61BE12E6100428049 /* ShinyCL */,
 				C7220BF91BE1931500DDB23B /* shinycl */,
 			);
 			name = Products;
@@ -103,23 +85,6 @@
 			productReference = C7220BF91BE1931500DDB23B /* shinycl */;
 			productType = "com.apple.product-type.tool";
 		};
-		C7FD32C51BE12E6100428049 /* ShinyCL */ = {
-			isa = PBXNativeTarget;
-			buildConfigurationList = C7FD32CD1BE12E6100428049 /* Build configuration list for PBXNativeTarget "ShinyCL" */;
-			buildPhases = (
-				C7FD32C21BE12E6100428049 /* Sources */,
-				C7FD32C31BE12E6100428049 /* Frameworks */,
-				C7FD32C41BE12E6100428049 /* CopyFiles */,
-			);
-			buildRules = (
-			);
-			dependencies = (
-			);
-			name = ShinyCL;
-			productName = "Shiny++";
-			productReference = C7FD32C61BE12E6100428049 /* ShinyCL */;
-			productType = "com.apple.product-type.tool";
-		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -130,9 +95,6 @@
 				ORGANIZATIONNAME = "Cianciosa, Mark R.";
 				TargetAttributes = {
 					C7220BF81BE1931500DDB23B = {
-						CreatedOnToolsVersion = 7.1;
-					};
-					C7FD32C51BE12E6100428049 = {
 						CreatedOnToolsVersion = 7.1;
 					};
 				};
@@ -149,7 +111,6 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				C7FD32C51BE12E6100428049 /* ShinyCL */,
 				C7220BF81BE1931500DDB23B /* shinycl */,
 			);
 		};
@@ -162,13 +123,6 @@
 			files = (
 				C7220C011BE1937B00DDB23B /* shiny.cl in Sources */,
 				C7220BFC1BE1931500DDB23B /* main.cpp in Sources */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		C7FD32C21BE12E6100428049 /* Sources */ = {
-			isa = PBXSourcesBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -268,22 +222,6 @@
 			};
 			name = Release;
 		};
-		C7FD32CE1BE12E6100428049 /* Debug */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_X86_VECTOR_INSTRUCTIONS = avx2;
-				PRODUCT_NAME = ShinyCL;
-			};
-			name = Debug;
-		};
-		C7FD32CF1BE12E6100428049 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				CLANG_X86_VECTOR_INSTRUCTIONS = avx2;
-				PRODUCT_NAME = ShinyCL;
-			};
-			name = Release;
-		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -294,21 +232,13 @@
 				C7220BFE1BE1931500DDB23B /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
 		};
 		C7FD32C11BE12E6100428049 /* Build configuration list for PBXProject "ShinyCL" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C7FD32CB1BE12E6100428049 /* Debug */,
 				C7FD32CC1BE12E6100428049 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
-		C7FD32CD1BE12E6100428049 /* Build configuration list for PBXNativeTarget "ShinyCL" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				C7FD32CE1BE12E6100428049 /* Debug */,
-				C7FD32CF1BE12E6100428049 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
