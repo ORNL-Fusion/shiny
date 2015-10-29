@@ -38,7 +38,7 @@ pro test_heat1d
 	Ti = T
 	Tex = heat1d(x,Ti,Q,k,dT,nT) 
 
-	nT_CN = 2000
+	nT_CN = 10
 
 	Ti = T
 	Tim = heat1d(x,Ti,Q,k,time/nT_CN,nT_CN,CN=1)
