@@ -1,6 +1,7 @@
-function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN
+function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT
 
 	if keyword_set(CN) then useCN=CN else useCN = 0	
+	if keyword_set(BT) then useBT=BT else useBT = 0	
 
 	nX = n_elements(s)
 
@@ -23,8 +24,8 @@ function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN
     T[0] = 0.0 
 	T[-1] = 0.0
 
-	if useCN then begin
-	; Implicit Crank-Nicolson temporal scheme
+	if useCN or useBT then begin
+	; Crank-Nicolson or Implicit Euler (BTCS) temporal scheme
 
 		idx = IndGen(nX)
 		inr = idx[1:-2]
@@ -32,26 +33,47 @@ function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN
 		A = fltArr(nX,nX)
 		B = fltArr(nX)
 
-		;bb = -k[inr]/(2*dS^2) ; super diagonal	
-		;cc = bb ; sub diagonal
-		;aa = 1/dt - (bb+cc) ; main diagonal
+		if useCN then begin
 
-		alp = k[inr]*dt/(ds^2)
-		bb = -alp
-		cc = -alp
-		aa = 2*(1+alp)
+			alp = k[inr]*dt/(ds^2)
+			bb = -alp
+			cc = -alp
+			aa = 2*(1+alp)
+
+			A[inr,inr+1] = bb 
+			A[inr,inr-1] = cc 
+			A[inr,inr] = aa 
+
+			;cc = -k[inr]/(2*ds^2)
+			;bb = 1/dt + k[inr]/ds^2 
+			;aa = cc 
+
+			;A[inr,inr+1] = cc
+			;A[inr,inr] = bb 
+			;A[inr,inr-1] = aa
+
+		endif else begin
+
+			cc = -k[inr]/ds^2 
+			bb = 1/dt + 2*k[inr]/ds^2
+			aa = cc 
+
+			A[inr,inr+1] = cc
+			A[inr,inr] = bb 
+			A[inr,inr-1] = aa
+
+		endelse
 
 		; Fill matrix
-		A[inr,inr+1] = bb
-		A[inr,inr-1] = cc
-		A[inr,inr] = aa
 
 		for _t = 0, nT-1 do begin
 
-			;dd = -cc * T[inr-1] + (1/dt + bb + cc) * T[inr] - bb*T[inr+1]
-			;B[inr] = dd
-
-			dd = alp * T[inr+1] + 2*(1-alp) * T[inr] + alp*T[inr-1]
+			if useCN then begin
+				dd = alp * T[inr+1] + 2*(1-alp) * T[inr] + alp*T[inr-1] + 2*dt*Q[inr]
+				;dd = aa * T[inr-1] + (1/dt + aa + cc) * T[inr] + cc*T[inr+1] + 2*Q[inr]
+			endif else begin
+				dd = 1/dt * T[inr] + Q[inr]				
+			endelse
 			B[inr] = dd
 
 			TNew = la_linear_equation(A[1:-2,1:-2],B[1:-2],/double,status=status)

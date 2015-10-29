@@ -2,8 +2,8 @@ pro shiny
 
     resolve_routine, 'interpb', /either, /compile_full_file
 
-    nX = 40 
-    nY = 40
+    nX = 20 
+    nY = 20
 
     eqdsk = 0
     if eqdsk then begin
@@ -77,7 +77,7 @@ pro shiny
         bz = bx*0
 
         kPer = 1
-        kPar = 1e12
+        kPar = 1e3
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -102,7 +102,7 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 100L
+    nT = 10000L
 
     width = 400
     height = 400
@@ -115,8 +115,10 @@ pro shiny
     nLevs = 11
     c=contour(T,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=50)
 
-    ; Solve the 2D problem directly on a Cartesian grid
+	doGunter = 0
 
+    ; Solve the 2D problem directly on a Cartesian grid
+	if doGunter then begin
     for _t = 0, nT - 1 do begin
 
         TSolution = tFac(kPer,_t*dt) * psi
@@ -270,7 +272,8 @@ pro shiny
     r=regress(TSolution[*],T[*],yfit=fit)
     p=plot(TSolution[*],fit,/over,$
         title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
-
+	
+	endif ; doGunter
 
     ; Solve using the 1D set
     ; ----------------------
@@ -293,7 +296,7 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-    nCFL = 10 ; i.e., number of grid points in the 1-D domain
+    nCFL = 50 ; i.e., number of grid points in the 1-D domain
     
     lPar = nCFL * sqrt(kPar * dt / 0.4) 
     lPer = nCFL * sqrt(kPer * dt / 0.4) 
@@ -349,13 +352,17 @@ pro shiny
     endfor
 
 
-    nItr = nT 
+	nT_im = 100 
+	dT_im = dt*nT/nT_im
+
+	print, 'dt_im / dt : ',dT_im / dt
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
 
-    for itr=0, nItr-1 do begin
+	plotMod = 1
+    for itr=0, nT_im-1 do begin
 
-    	TSolution = tFac(kPer,nItr*dt) * psi
+    	TSolution = tFac(kPer,nT_im*dt_im) * psi
 
 		TSolution[0,*]=0
 		TSolution[-1,*]=0
@@ -376,8 +383,8 @@ pro shiny
                 _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
-                nT = 1
-                _T = heat1d(d.s,_T,_Q,k,dT/2,nT,cfl=cfl,plot=0,CN=1) 
+ 
+                _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=0,BT=1) 
 
                 T2[i,j] = interpol(_T,d.s,0,/spline) ; get T at the actual point
 
@@ -398,8 +405,7 @@ pro shiny
                 _Q  = interpolate ( Q, ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
-                nT = 1
-                _T = heat1d(d.s,_T,_Q,k,dt/2,nT,cfl=cfl,plot=0) 
+                _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=0,BT=1) 
 
                 T2[i,j] = interpol(_T,d.s,0,/spline) ; get T at the actual point
 
@@ -407,36 +413,39 @@ pro shiny
         endfor
 
         ; plot time evolving solution at a subset of times
-        if itr mod 50 eq 0 and itr gt 0 then begin
+        if itr mod plotMod eq 0 and itr gt 0 then begin
             if itr gt 0 then c.erase
-                    print, itr, nItr    
+                    print, itr, nT_im    
                     c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
                     c=contour(T2[1:-2,1:-2]/TSolution[1:-2,1:-2],x[1:-2],y[1:-2],$
 						/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
 
             frame = c.CopyWindow()
             !null = oVid2.put(vidStream2, frame)
-			time = dt * itr
-			save, T2, time, itr, dt, nItr, fileName='op-split.sav'
+			time = dt_im * nT_im 
+			save, T2, time, itr, dt_im, nT_im, fileName='op-split.sav'
+  			T_00 = interpolate ( T2, ( 0 - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+			print, 1d0/T_00 - kPer
+
         endif
     endfor
 
-
     ; Compare with analytic solution
 
-    TSolution = tFac(kPer,nItr*dt) * psi
+    TSolution = tFac(kPer,nT_im*dt_im) * psi
 
-	TSolution[0,*]=0
-	TSolution[-1,*]=0
-	TSolution[*,0]=0
-	TSolution[*,-1]=0
+	;TSolution[0,*]=0
+	;TSolution[-1,*]=0
+	;TSolution[*,0]=0
+	;TSolution[*,-1]=0
 
     l2 = norm(TSolution-T2,lNorm=2)
     p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
     r=regress(TSolution[*],T2[*],yfit=fit)
     p=plot(TSolution[*],fit,/over,$
         title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
-
-
+	print, 'OS Time : ', nT_im * dt_im
+	print, 'Time for information along parallel domain : ', 1/(kPar / (lPar)^2)
+	print, 'Time per parallel iteration : ', dt_im / 2 
 stop
 end
