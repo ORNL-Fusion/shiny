@@ -21,8 +21,8 @@ int main(int argc, const char * argv[]) {
     
     cl_int error = 0;
     
-    const uint nx = 40;
-    const uint ny = 40;
+    const cl_uint nx = 40;
+    const cl_uint ny = 40;
     
     const cl_float xmin = -0.5;
     const cl_float xmax =  0.5;
@@ -191,8 +191,8 @@ int main(int argc, const char * argv[]) {
     
     error  = clSetKernelArg(stepTimeGunterSym_kernel, 0, sizeof(cl_mem), &t_mem_object);
     error |= clSetKernelArg(stepTimeGunterSym_kernel, 1, sizeof(cl_mem), &t_next_mem_object);
-    error |= clSetKernelArg(stepTimeGunterSym_kernel, 2, sizeof(size_t), &nx);
-    error |= clSetKernelArg(stepTimeGunterSym_kernel, 3, sizeof(size_t), &ny);
+    error |= clSetKernelArg(stepTimeGunterSym_kernel, 2, sizeof(uint), &nx);
+    error |= clSetKernelArg(stepTimeGunterSym_kernel, 3, sizeof(uint), &ny);
     error |= clSetKernelArg(stepTimeGunterSym_kernel, 4, sizeof(cl_float), &xmin);
     error |= clSetKernelArg(stepTimeGunterSym_kernel, 5, sizeof(cl_float), &ymin);
     error |= clSetKernelArg(stepTimeGunterSym_kernel, 6, sizeof(cl_float), &dt);
@@ -203,16 +203,17 @@ int main(int argc, const char * argv[]) {
     
     error |= clSetKernelArg(update_kernel, 0, sizeof(cl_mem), &t_mem_object);
     error |= clSetKernelArg(update_kernel, 1, sizeof(cl_mem), &t_next_mem_object);
-    error |= clSetKernelArg(update_kernel, 2, sizeof(size_t), &nx);
-    error |= clSetKernelArg(update_kernel, 3, sizeof(size_t), &ny);
+    error |= clSetKernelArg(update_kernel, 2, sizeof(uint), &nx);
+    error |= clSetKernelArg(update_kernel, 3, sizeof(uint), &ny);
     
     for (size_t time = 0; time <= end_time; time++) {
         error |= clEnqueueNDRangeKernel(queue0, stepTimeGunterSym_kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
-        error |= clEnqueueNDRangeKernel(queue0, update_kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
+	error |= clEnqueueNDRangeKernel(queue0, update_kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
     }
     
     if (error) {
         std::cout << "Failed to enqueue solve symmetric" << std::endl;
+	std::cout << error << std::endl;
         exit(1);
     }
     
