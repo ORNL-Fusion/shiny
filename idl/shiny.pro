@@ -2,8 +2,8 @@ pro shiny
 
     resolve_routine, 'interpb', /either, /compile_full_file
 
-    nX = 20 
-    nY = 20
+    nX = 32 
+    nY = 32 
 
     eqdsk = 0
     if eqdsk then begin
@@ -70,7 +70,7 @@ pro shiny
         bz = bx*0
 
         kPer = 1
-        kPar = 1e3
+        kPar = 1e9
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -95,7 +95,8 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = ceil(1d0/dt);1000000L
+	EndTime = 1d0
+    nT = ceil(EndTime/dt);1000000L
 
     width = 400
     height = 400
@@ -345,8 +346,8 @@ pro shiny
     endfor
 
 
-	nT_im = 200 
-	dT_im = dt*nT/nT_im
+	nT_im = 100 
+	dT_im = EndTime/nT_im 
 
 	print, 'dt_im / dt : ',dT_im / dt
 
@@ -354,7 +355,7 @@ pro shiny
 
 	lookAt1DPar = 0
 	lookAt1DPer = 0
-
+	cubic = 1
     useAnalyticBCs = 1
 	plotMod = 1
     for itr=0, nT_im-1 do begin
@@ -382,7 +383,7 @@ pro shiny
 				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
 				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
 
-                _T  = interpolate ( T2_copy, _i, _j, cubic = 0 )
+                _T  = interpolate ( T2_copy, _i, _j, cubic = cubic )
 				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
@@ -425,7 +426,8 @@ pro shiny
 					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
 				endelse
 
-                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                ;T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
 
             endfor
         endfor
@@ -446,7 +448,7 @@ pro shiny
 				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
 				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
 
-                _T  = interpolate ( T2_copy, _i, _j, cubic = 0 )
+                _T  = interpolate ( T2_copy, _i, _j, cubic = cubic, /double )
 				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
@@ -474,7 +476,7 @@ pro shiny
 
                 	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
-                	__Q  = interpolate ( Q, _i, _j, cubic = 0, /double )
+                	__Q  = interpolate ( Q, _i, _j, cubic = 1, /double )
 
 					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
 					p=plot(d.s,_Ta,/over,color='g',thick=3)
@@ -486,7 +488,8 @@ pro shiny
                 	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
 				endelse
 
-                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                ;T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
 
             endfor
         endfor
@@ -496,14 +499,21 @@ pro shiny
             if itr gt 0 then c.erase
                     print, itr, nT_im    
                     c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
-                    c=contour(T2[1:-2,1:-2]/TSolution[1:-2,1:-2],x[1:-2],y[1:-2],$
+                    ;c=contour(T2[1:-2,1:-2]/TSolution[1:-2,1:-2],x[1:-2],y[1:-2],$
+					;	/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
+                    c=contour(T2-TSolution,x,y,$
 						/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
+
 
             frame = c.CopyWindow()
             !null = oVid2.put(vidStream2, frame)
 			time = dt_im * nT_im 
 			save, T2, time, itr, dt_im, nT_im, fileName='op-split.sav'
-  			T_00 = interpolate ( T2, ( 0 - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = 0 )
+
+			_i = ( 0 - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
+			_j = ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
+
+  			T_00 = interpolate ( T2, _i, _j, cubic = cubic, /double )
 			print, 1d0/T_00 - kPer
 
         endif
@@ -512,11 +522,6 @@ pro shiny
     ; Compare with analytic solution
 
     TSolution = getTa(x2d,y2d,kPer,tNext)
-
-	;TSolution[0,*]=0
-	;TSolution[-1,*]=0
-	;TSolution[*,0]=0
-	;TSolution[*,-1]=0
 
     l2 = norm(TSolution-T2,lNorm=2)
     p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
