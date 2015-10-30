@@ -352,7 +352,7 @@ pro shiny
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
 
-	lookAt1D = 0
+	lookAt1D = 1
     useAnalyticBCs = 1
 	plotMod = 1
     for itr=0, nT_im-1 do begin
@@ -386,10 +386,11 @@ pro shiny
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
 
 				if lookAt1D then begin
-					TT = _T
+				    _T[0] =  getTa(d.x[0],d.y[0],kPer,tNext)
+					_T[-1] = getTa(d.x[-1],d.y[-1],kPer,tNext)
+
+    	            TT = _T
 					__T = _T
-					_T[0] = getTa(d.x[0],d.y[0],kPer,now)
-					_T[-1] = getTa(d.x[-1],d.y[-1],kPer,now)
                 	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
                 	_T2 = heat1d(d.s,TT,_Q,k,dt,dt_im/dt/2,cfl=cfl,plot=0,CN=0,BT=0) 
 					_Ta = tFac(kPer,(itr+1)*dt_im/2) * getPsi(d.x,d.y) 
