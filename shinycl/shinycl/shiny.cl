@@ -1,4 +1,4 @@
-kernel void init(global float *t, global float *t_next, size_t nx, size_t ny) {
+kernel void init(global float *t, global float *t_next, uint nx, uint ny) {
     size_t i = get_global_id(0);
     size_t j = get_global_id(1);
     
@@ -10,12 +10,10 @@ kernel void init(global float *t, global float *t_next, size_t nx, size_t ny) {
     }
 }
 
-float position(size_t index, float slope, float offset);
 float position(size_t index, float slope, float offset) {
     return index*slope + offset;
 }
 
-float2 get_b(float x, float y);
 float2 get_b(float x, float y) {
     float2 b;
     b.x =  M_PI_F*cospi(x)*sinpi(y);
@@ -26,7 +24,6 @@ float2 get_b(float x, float y) {
     return b/bmod;
 }
 
-float2 dDotGradT(float kper, float kpar, float2 b, float2 gT);
 float2 dDotGradT(float kper, float kpar, float2 b, float2 gT) {
     float dxx = b.x*b.x*(kpar - kper) + kper;
     float dxy = b.x*b.y*(kpar - kper);
@@ -40,7 +37,7 @@ float2 dDotGradT(float kper, float kpar, float2 b, float2 gT) {
 }
 
 kernel void stepTimeGunterSym(global float *t, global float *t_next,
-                              size_t nx, size_t ny,
+                              uint nx, uint ny,
                               float xmin, float ymin,
                               float dt, float dx, float dy,
                               float kper, float kpar) {
@@ -96,7 +93,7 @@ kernel void stepTimeGunterSym(global float *t, global float *t_next,
     }
 }
 
-kernel void update(global float *t, global float *t_next, size_t nx, size_t ny) {
+kernel void update(global float *t, global float *t_next, uint nx, uint ny) {
     size_t i = get_global_id(0);
     size_t j = get_global_id(1);
     
@@ -108,7 +105,7 @@ kernel void update(global float *t, global float *t_next, size_t nx, size_t ny) 
 }
 
 kernel void analytic(global float *t,
-                     size_t nx, size_t ny,
+                     uint nx, uint ny,
                      float xmin, float ymin,
                      float time, float dx, float dy,
                      float kper) {
@@ -123,6 +120,6 @@ kernel void analytic(global float *t,
         
         float psi = cospi(x)*cospi(y);
         
-        t[k_ij] = (1 - exp(-2*kper*M_PI_F*M_PI_F*time))/kper*psi;
+        t[k_ij] = (1.0 - exp(-2*kper*M_PI_F*M_PI_F*time))/kper*psi;
     }
 }

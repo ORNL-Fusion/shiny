@@ -21,8 +21,8 @@ int main(int argc, const char * argv[]) {
     
     cl_int error = 0;
     
-    const size_t nx = 40;
-    const size_t ny = 40;
+    const uint nx = 40;
+    const uint ny = 40;
     
     const cl_float xmin = -0.5;
     const cl_float xmax =  0.5;
@@ -63,17 +63,17 @@ int main(int argc, const char * argv[]) {
     cl_device_id *device_ids;
     error |= clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, 0, NULL, &num_devices);
     if (num_devices == 0) {
-        error |= clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU, 0, NULL, &num_devices);
+        error |= clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, 0, NULL, &num_devices);
         if (num_devices == 0) {
             std::cout << "Error: Could not find any valid OpenCL devices." << std::endl;
             exit(1);
         }
         
         device_ids = new cl_device_id[num_devices];
-        error |= clGetDeviceIDs(NULL, CL_DEVICE_TYPE_CPU, num_devices, device_ids, NULL);
+        error |= clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_CPU, num_devices, device_ids, NULL);
     } else {
         device_ids = new cl_device_id[num_devices];
-        error |= clGetDeviceIDs(NULL, CL_DEVICE_TYPE_GPU, num_devices, device_ids, NULL);
+        error |= clGetDeviceIDs(platform_ids[0], CL_DEVICE_TYPE_GPU, num_devices, device_ids, NULL);
     }
     
     for (size_t i = 0; i < num_devices; i++) {
@@ -83,8 +83,8 @@ int main(int argc, const char * argv[]) {
         char *info = new char[device_info_size];
         error |= clGetDeviceInfo(device_ids[0], CL_DEVICE_NAME, device_info_size, info, NULL);
         
-        std::cout << info << std::endl;
-        delete [] info;
+	 std::cout << info << std::endl;
+	 delete [] info;
     }
     
     if (error) {
@@ -131,9 +131,9 @@ int main(int argc, const char * argv[]) {
         std::cout << "Failed to get create kernels" << std::endl;
         exit(1);
     }
-    
+
     const size_t buffersize = sizeof(cl_float)*nx*ny;
-    
+
     cl_mem t_mem_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, buffersize, NULL, &error);
     cl_mem t_next_mem_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, buffersize, NULL, &error);
     cl_mem t_analytic_mem_object = clCreateBuffer(context, CL_MEM_WRITE_ONLY, buffersize, NULL, &error);
@@ -161,9 +161,15 @@ int main(int argc, const char * argv[]) {
     
     error  = clSetKernelArg(init_kernel, 0, sizeof(cl_mem), &t_mem_object);
     error |= clSetKernelArg(init_kernel, 1, sizeof(cl_mem), &t_next_mem_object);
-    error |= clSetKernelArg(init_kernel, 2, sizeof(size_t), &nx);
-    error |= clSetKernelArg(init_kernel, 3, sizeof(size_t), &ny);
-    error |= clEnqueueNDRangeKernel(queue0, init_kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
+    error |= clSetKernelArg(init_kernel, 2, sizeof(uint), &nx);
+    error |= clSetKernelArg(init_kernel, 3, sizeof(uint), &ny);
+    if (error) {
+        std::cout << "Error setting args for init_kernel" << std::endl;
+	std::cout << "err: " << error << std::endl;
+        exit(1);
+    }
+      
+    error = clEnqueueNDRangeKernel(queue0, init_kernel, 2, NULL, global_work_size, local_work_size, 0, NULL, NULL);
 
     if (error) {
         std::cout << CL_INVALID_PROGRAM_EXECUTABLE << std::endl;
@@ -175,6 +181,7 @@ int main(int argc, const char * argv[]) {
         std::cout << CL_INVALID_WORK_GROUP_SIZE << std::endl;
         
         std::cout << "Failed to enqueue init_kernel" << std::endl;
+	std::cout << "err: " << error << std::endl;
         exit(1);
     }
     
@@ -212,8 +219,8 @@ int main(int argc, const char * argv[]) {
     const cl_float final_time = dt*end_time;
     
     error  = clSetKernelArg(analytic_kernel, 0, sizeof(cl_mem), &t_analytic_mem_object);
-    error |= clSetKernelArg(analytic_kernel, 1, sizeof(size_t), &nx);
-    error |= clSetKernelArg(analytic_kernel, 2, sizeof(size_t), &ny);
+    error |= clSetKernelArg(analytic_kernel, 1, sizeof(uint), &nx);
+    error |= clSetKernelArg(analytic_kernel, 2, sizeof(uint), &ny);
     error |= clSetKernelArg(analytic_kernel, 3, sizeof(cl_float), &xmin);
     error |= clSetKernelArg(analytic_kernel, 4, sizeof(cl_float), &ymin);
     error |= clSetKernelArg(analytic_kernel, 5, sizeof(cl_float), &final_time);
