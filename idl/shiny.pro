@@ -95,7 +95,7 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 1000L
+    nT = ceil(1d0/dt);1000000L
 
     width = 400
     height = 400
@@ -294,7 +294,7 @@ pro shiny
     lPar = nCFL * sqrt(kPar * dt / 0.4) 
     lPer = nCFL * sqrt(kPer * dt / 0.4) 
 
-	n1DTrace = 100
+	n1DTrace = 1000
     dSPar = lPar / n1dTrace
     dSPer = lPer / n1dTrace
 
@@ -345,7 +345,7 @@ pro shiny
     endfor
 
 
-	nT_im = 10 
+	nT_im = 200 
 	dT_im = dt*nT/nT_im
 
 	print, 'dt_im / dt : ',dT_im / dt
@@ -503,7 +503,7 @@ pro shiny
             !null = oVid2.put(vidStream2, frame)
 			time = dt_im * nT_im 
 			save, T2, time, itr, dt_im, nT_im, fileName='op-split.sav'
-  			T_00 = interpolate ( T2, ( 0 - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+  			T_00 = interpolate ( T2, ( 0 - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = 0 )
 			print, 1d0/T_00 - kPer
 
         endif
@@ -511,7 +511,7 @@ pro shiny
 
     ; Compare with analytic solution
 
-    TSolution = tFac(kPer,nT_im*dt_im) * psi
+    TSolution = getTa(x2d,y2d,kPer,tNext)
 
 	;TSolution[0,*]=0
 	;TSolution[-1,*]=0
