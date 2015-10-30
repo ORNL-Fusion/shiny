@@ -9,17 +9,19 @@
 /* Begin PBXBuildFile section */
 		C7220BFC1BE1931500DDB23B /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = C7220BFB1BE1931500DDB23B /* main.cpp */; };
 		C7220C011BE1937B00DDB23B /* shiny.cl in Sources */ = {isa = PBXBuildFile; fileRef = C7220C001BE1937B00DDB23B /* shiny.cl */; };
+		C7A1467A1BE2F8A100DCEF4D /* shiny.cl in CopyFiles */ = {isa = PBXBuildFile; fileRef = C7220C001BE1937B00DDB23B /* shiny.cl */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
 		C7220BF71BE1931500DDB23B /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
-			buildActionMask = 2147483647;
-			dstPath = /usr/share/man/man1/;
-			dstSubfolderSpec = 0;
+			buildActionMask = 12;
+			dstPath = "";
+			dstSubfolderSpec = 7;
 			files = (
+				C7A1467A1BE2F8A100DCEF4D /* shiny.cl in CopyFiles */,
 			);
-			runOnlyForDeploymentPostprocessing = 1;
+			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
 
