@@ -70,7 +70,7 @@ pro shiny
         bz = bx*0
 
         kPer = 1
-        kPar = 1e9
+        kPar = 1e6
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
