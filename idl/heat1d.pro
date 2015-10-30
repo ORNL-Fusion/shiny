@@ -1,4 +1,4 @@
-function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT
+function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT, BC=BC 
 
 	if keyword_set(CN) then useCN=CN else useCN = 0	
 	if keyword_set(BT) then useBT=BT else useBT = 0	
@@ -73,20 +73,27 @@ function heat1d, s, T, Q, k, dt, nT, cfl = _cfl, plot = _plot, CN=CN, BT=BT
 
 		for _t = 0, nT-1 do begin
 
+			; BC.T_LEnd[now,next]
+
+			T[0] = BC.T_LEnd[1]
+			T[-1] = BC.T_REnd[1]
+
 			if useCN then begin
 				dd = alp * T[inr+1] + 2*(1-alp) * T[inr] + alp*T[inr-1] + 2*dt*Q[inr]
 				;dd = aa * T[inr-1] + (1/dt + aa + cc) * T[inr] + cc*T[inr+1] + 2*Q[inr]
 			endif else begin
 				dd = 1/dt * T[inr] + Q[inr]				
 			endelse
-			B[inr] = dd
-			B[0] = T[0]
-			B[-1] = T[-1]
 
-			TNew = la_linear_equation(A,B,/double,status=status)
+			; See http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
+			B[inr] = dd
+			B[1] = B[1] + alp[0]*BC.T_LEnd[0]
+			B[-2] = B[-2] + alp[-1]*BC.T_REnd[0]
+		
+			TNew = la_linear_equation(A[1:-2,1:-2],B[1:-2],/double,status=status)
 			if status ne 0 then stop
 	
-			T[inr] = TNew[inr]
+			T[inr] = TNew
 
 		endfor
 

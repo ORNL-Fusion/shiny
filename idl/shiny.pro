@@ -2,8 +2,8 @@ pro shiny
 
     resolve_routine, 'interpb', /either, /compile_full_file
 
-    nX = 20 
-    nY = 20
+    nX = 32 
+    nY = 32 
 
     eqdsk = 0
     if eqdsk then begin
@@ -70,7 +70,7 @@ pro shiny
         bz = bx*0
 
         kPer = 1
-        kPar = 1e3
+        kPar = 1e6
 
         bMag = sqrt(bx^2+by^2+bz^2) 
         bxU = bx / bMag
@@ -95,7 +95,8 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-    nT = 1000L
+	EndTime = 1d0
+    nT = ceil(EndTime/dt);1000000L
 
     width = 400
     height = 400
@@ -294,7 +295,7 @@ pro shiny
     lPar = nCFL * sqrt(kPar * dt / 0.4) 
     lPer = nCFL * sqrt(kPer * dt / 0.4) 
 
-	n1DTrace = 900
+	n1DTrace = 1000
     dSPar = lPar / n1dTrace
     dSPer = lPer / n1dTrace
 
@@ -345,14 +346,16 @@ pro shiny
     endfor
 
 
-	nT_im = 50 
-	dT_im = dt*nT/nT_im
+	nT_im = 100 
+	dT_im = EndTime/nT_im 
 
 	print, 'dt_im / dt : ',dT_im / dt
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
 
-	lookAt1D = 0
+	lookAt1DPar = 0
+	lookAt1DPer = 0
+	cubic = 1
     useAnalyticBCs = 1
 	plotMod = 1
     for itr=0, nT_im-1 do begin
@@ -380,41 +383,51 @@ pro shiny
 				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
 				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
 
-                _T  = interpolate ( T2_copy, _i, _j, cubic = 0 )
+                _T  = interpolate ( T2_copy, _i, _j, cubic = cubic )
 				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
 
-				if lookAt1D then begin
-					TT = _T
-					__T = _T
-					_T[0] = getTa(d.x[0],d.y[0],kPer,now)
-					_T[-1] = getTa(d.x[-1],d.y[-1],kPer,now)
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
-                	_T2 = heat1d(d.s,TT,_Q,k,dt,dt_im/dt/2,cfl=cfl,plot=0,CN=0,BT=0) 
-					_Ta = tFac(kPer,(itr+1)*dt_im/2) * getPsi(d.x,d.y) 
+                if useAnalyticBCs then begin
+                    ; See http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
 
+	                T_LEndNow = getTa(d.x[0],d.y[0],kPer,tNow)
+				    T_REndNow = getTa(d.x[-1],d.y[-1],kPer,tNow)
+                   	T_LEndNex = getTa(d.x[0],d.y[0],kPer,tNext)
+				    T_REndNex = getTa(d.x[-1],d.y[-1],kPer,tNext)
+    
+                endif else begin
+
+	                T_LEndNow = 0 
+				    T_REndNow = 0 
+                   	T_LEndNex = 0 
+				    T_REndNex = 0 
+ 
+                endelse
+	
+				BC = { T_LEnd : [T_LEndNow,T_LEndNex], T_REnd : [T_REndNow,T_REndNex] } 
+
+				if lookAt1DPar then begin
+					_Ti = _T
+
+
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+					_Ta = getTa(d.x,d.y,kPer,tNext) 
                 	__Q  = interpolate ( Q, _i, _j, cubic = 0, /double )
-					p=plot(d.s,__T,layout=[3,1,1])
-					p=plot(d.s,_Ta,layout=[3,1,2],/current,color='g',thick=3)
-					p=plot(d.s,_T2,/over,color='b')
+
+					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
+					p=plot(d.s,_Ta,/over,color='g',thick=3)
 					p=plot(d.s,_T,/over)
 					p=plot(d.s,_Q,layout=[3,1,3],/current)
 					p=plot(d.s,__Q,/over,color='b')
 					stop
+
 				endif else begin
-                    if useAnalyticBCs then begin
-                        ; See http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
-					    _T[0] = (getTa(d.x[0],d.y[0],kPer,tNow)+getTa(d.x[0],d.y[0],kPer,tNext))/2
-					    _T[-1] = (getTa(d.x[-1],d.y[-1],kPer,tNow)+getTa(d.x[-1],d.y[-1],kPer,tNext))/2
-                    endif else begin
-					    _T[0] = 0 
-					    _T[-1] = 0
-                    endelse
-					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
+					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
 				endelse
 
-                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                ;T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
 
             endfor
         endfor
@@ -435,22 +448,48 @@ pro shiny
 				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
 				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
 
-                _T  = interpolate ( T2_copy, _i, _j, cubic = 0 )
+                _T  = interpolate ( T2_copy, _i, _j, cubic = cubic, /double )
 				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
 
                 if useAnalyticBCs then begin    
-	                _T[0] = (getTa(d.x[0],d.y[0],kPer,tNow)+getTa(d.x[0],d.y[0],kPer,tNext))/2
-				    _T[-1] = (getTa(d.x[-1],d.y[-1],kPer,tNow)+getTa(d.x[-1],d.y[-1],kPer,tNext))/2
+
+	                T_LEndNow = getTa(d.x[0],d.y[0],kPer,tNow)
+				    T_REndNow = getTa(d.x[-1],d.y[-1],kPer,tNow)
+                   	T_LEndNex = getTa(d.x[0],d.y[0],kPer,tNext)
+				    T_REndNex = getTa(d.x[-1],d.y[-1],kPer,tNext)
+    
                 endif else begin
-	                _T[0] = 0 
-				    _T[-1] = 0
+
+	                T_LEndNow = 0 
+				    T_REndNow = 0 
+                   	T_LEndNex = 0 
+				    T_REndNex = 0 
+    
                 endelse
 
-                _T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0) 
+				BC = { T_LEnd : [T_LEndNow,T_LEndNex], T_REnd : [T_REndNow,T_REndNex] } 
 
-                T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+				if lookAt1DPer then begin
+					_Ti = _T
+
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+					_Ta = getTa(d.x,d.y,kPer,tNext) 
+                	__Q  = interpolate ( Q, _i, _j, cubic = 1, /double )
+
+					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
+					p=plot(d.s,_Ta,/over,color='g',thick=3)
+					p=plot(d.s,_T,/over)
+					p=plot(d.s,_Q,layout=[3,1,3],/current)
+					p=plot(d.s,__Q,/over,color='b')
+					stop
+				endif else begin
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+				endelse
+
+                ;T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+                T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
 
             endfor
         endfor
@@ -460,14 +499,21 @@ pro shiny
             if itr gt 0 then c.erase
                     print, itr, nT_im    
                     c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
-                    c=contour(T2[1:-2,1:-2]/TSolution[1:-2,1:-2],x[1:-2],y[1:-2],$
+                    ;c=contour(T2[1:-2,1:-2]/TSolution[1:-2,1:-2],x[1:-2],y[1:-2],$
+					;	/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
+                    c=contour(T2-TSolution,x,y,$
 						/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
+
 
             frame = c.CopyWindow()
             !null = oVid2.put(vidStream2, frame)
 			time = dt_im * nT_im 
 			save, T2, time, itr, dt_im, nT_im, fileName='op-split.sav'
-  			T_00 = interpolate ( T2, ( 0 - x[0] ) / (x[-1]-x[0]) * (nX-1.0), ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0), cubic = -0.5 )
+
+			_i = ( 0 - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
+			_j = ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
+
+  			T_00 = interpolate ( T2, _i, _j, cubic = cubic, /double )
 			print, 1d0/T_00 - kPer
 
         endif
@@ -475,12 +521,7 @@ pro shiny
 
     ; Compare with analytic solution
 
-    TSolution = tFac(kPer,nT_im*dt_im) * psi
-
-	;TSolution[0,*]=0
-	;TSolution[-1,*]=0
-	;TSolution[*,0]=0
-	;TSolution[*,-1]=0
+    TSolution = getTa(x2d,y2d,kPer,tNext)
 
     l2 = norm(TSolution-T2,lNorm=2)
     p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
