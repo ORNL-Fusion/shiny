@@ -8,7 +8,6 @@
 
 #include <iostream>
 #include <fstream>
-#include <OpenCL/OpenCL.h>
 #include <algorithm>
 #include <cmath>
 
@@ -79,7 +78,7 @@ int main(int argc, const char * argv[]) {
     
     for (size_t i = 0; i < num_devices; i++) {
         size_t device_info_size;
-        error |= clGetDeviceInfo(device_ids[0], CL_DEVICE_NAME, NULL, NULL, &device_info_size);
+        error |= clGetDeviceInfo(device_ids[0], CL_DEVICE_NAME, 0, NULL, &device_info_size);
         
         char *info = new char[device_info_size];
         error |= clGetDeviceInfo(device_ids[0], CL_DEVICE_NAME, device_info_size, info, NULL);
@@ -96,7 +95,7 @@ int main(int argc, const char * argv[]) {
     // Apparently you can set up a contect with multiple devices. This may be usefull for running all
     // three methods at once.
     cl_context context = clCreateContext(NULL, num_devices, device_ids, NULL, NULL, &error);
-    cl_command_queue queue0 = clCreateCommandQueue(context, device_ids[0], NULL, &error);
+    cl_command_queue queue0 = clCreateCommandQueue(context, device_ids[0], 0, &error);
     
     std::ifstream cl_source("shiny.cl", std::fstream::in);
     std::filebuf *fileBuffer = cl_source.rdbuf();
