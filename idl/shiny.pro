@@ -297,7 +297,7 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-	restorePoints = 1
+	restorePoints = 0
 
 	if restorePoints then begin
 
@@ -308,7 +308,7 @@ pro shiny
     	nCFL = 40 ; i.e., number of grid points in the 1-D domain
     	
     	lPar = nCFL * sqrt(kPar * dt / 0.4) 
-    	lPer = nCFL * sqrt(kPer * dt / 0.4);*1000 
+    	lPer = nCFL * sqrt(kPer * dt / 0.4)*10;00 
 
 		n1DTrace = 1000
     	dSPar = lPar / n1dTrace
@@ -366,7 +366,7 @@ pro shiny
 
 	endelse ; if restorePoints
 
-	nT_im = 100000000L 
+	nT_im = 100L 
 	dT_im = EndTime/nT_im 
 
 	print, 'dt_im / dt : ',dT_im / dt
@@ -374,7 +374,7 @@ pro shiny
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=1,layout=[2,1,1])
 
 	lookAt1DPar = 0
-	lookAt1DPer = 1
+	lookAt1DPer = 0
 	cubic = 0 ; Setting this to be non-zero causes problems. Do not do it :)
     useAnalyticBCs = 1
 	plotMod = 1
@@ -402,25 +402,6 @@ pro shiny
 				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
-
-                if useAnalyticBCs then begin
-                    ; See http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
-
-	                T_LEndNow = getTa(d.x[0],d.y[0],kPer,tNow)
-				    T_REndNow = getTa(d.x[-1],d.y[-1],kPer,tNow)
-                   	T_LEndNex = getTa(d.x[0],d.y[0],kPer,tNext)
-				    T_REndNex = getTa(d.x[-1],d.y[-1],kPer,tNext)
-    
-                endif else begin
-
-	                T_LEndNow = 0 
-				    T_REndNow = 0 
-                   	T_LEndNex = 0 
-				    T_REndNex = 0 
- 
-                endelse
-	
-				BC = { T_LEnd : [T_LEndNow,T_LEndNex], T_REnd : [T_REndNow,T_REndNex] } 
 
 				if lookAt1DPar then begin
 					_Ti = _T
@@ -466,24 +447,6 @@ pro shiny
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
 
-                if useAnalyticBCs then begin    
-
-	                T_LEndNow = getTa(d.x[0],d.y[0],kPer,tNow)
-				    T_REndNow = getTa(d.x[-1],d.y[-1],kPer,tNow)
-                   	T_LEndNex = getTa(d.x[0],d.y[0],kPer,tNext)
-				    T_REndNex = getTa(d.x[-1],d.y[-1],kPer,tNext)
-    
-                endif else begin
-
-	                T_LEndNow = 0 
-				    T_REndNow = 0 
-                   	T_LEndNex = 0 
-				    T_REndNex = 0 
-    
-                endelse
-
-				BC = { T_LEnd : [T_LEndNow,T_LEndNex], T_REnd : [T_REndNow,T_REndNex] } 
-
 				if lookAt1DPer then begin
 				
 					_TaNow = getTa(d.x,d.y,kPer,tNow) 
@@ -508,7 +471,7 @@ pro shiny
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,d=d,useAnalyticBCs=useAnalyticBCs) 
 				endelse
 
                 T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
