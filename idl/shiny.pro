@@ -5,6 +5,8 @@ pro shiny
     nX = 32 
     nY = 32 
 
+	noPlot = 0		
+
     eqdsk = 0
     if eqdsk then begin
         eqdskFileName = 'g122976.03021'
@@ -83,10 +85,12 @@ pro shiny
         T2 = T 
         TSolution = tFac(kPer,0) * psi
 
-        c=contour(psi,x,y,layout=[2,2,1],/fill,title='psi')
-        c=contour(TSolution,x,y,layout=[2,2,2],/current,/fill,title='T')
-        c=contour(Q,x,y,layout=[2,2,3],/current,/fill,title='Q')
-        v=vector(bx,by,x,y,layout=[2,2,4],/current,auto_color=1,rgb_table=10,auto_subsample=1,title='B')
+		if not noPlot then begin
+        	c=contour(psi,x,y,layout=[2,2,1],/fill,title='psi')
+        	c=contour(TSolution,x,y,layout=[2,2,2],/current,/fill,title='T')
+        	c=contour(Q,x,y,layout=[2,2,3],/current,/fill,title='Q')
+        	v=vector(bx,by,x,y,layout=[2,2,4],/current,auto_color=1,rgb_table=10,auto_subsample=1,title='B')
+		endif
 
     endelse
 
@@ -107,7 +111,7 @@ pro shiny
     xRange=[x[0],x[-1]]
     yRange=[y[0],y[-1]]
     nLevs = 11
-    c=contour(T,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=50)
+    c=contour(T,x,y,/fill,/buffer,dimensions=[width,height],rgb_table=7)
 
 	doGunter = 0
 
@@ -247,7 +251,7 @@ pro shiny
         if _t mod 50 eq 0 and _t gt 0 then begin
             if _t gt 0 then c.erase
                     print, _t, nT    
-                    c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=50)
+                    c=contour(T,x,y,/fill,/buffer,/current,dimensions=[width,height],rgb_table=7)
             frame = c.CopyWindow()
             !null = oVid.put(vidStream, frame)
 			time = dt * nT
@@ -262,10 +266,13 @@ pro shiny
 
     l2 = norm(TSolution-T,lNorm=2)
     dkPer = 1/T[nX/2,nY/2]-kPer
-    p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none')
     r=regress(TSolution[*],T[*],yfit=fit)
-    p=plot(TSolution[*],fit,/over,$
-        title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
+
+	if not noPlot then begin
+    	p=plot(TSolution[*],T[*],symbol="Circle",lineStyle='none')
+    	p=plot(TSolution[*],fit,/over,$
+    	    title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
+	endif
 	
 	endif ; doGunter
 
@@ -290,87 +297,95 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-    nCFL = 40 ; i.e., number of grid points in the 1-D domain
-    
-    lPar = nCFL * sqrt(kPar * dt / 0.4) 
-    lPer = nCFL * sqrt(kPer * dt / 0.4) 
+	restorePoints = 1
 
-	n1DTrace = 1000
-    dSPar = lPar / n1dTrace
-    dSPer = lPer / n1dTrace
+	if restorePoints then begin
 
-    __n = 2*nCFL-1
-    d1 = { $
-        N: __n, $
-        x: fltArr(__n), $
-        y: fltArr(__n), $
-        dS: dSPar, $
-        s: fltArr(__n), $
-        kx: fltArr(__n), $
-        ky: fltArr(__n), $
-        L: lpar }   
+		restore, 'points.sav'
 
-    pt = { x: 0.0, y:0.0, par : d1, per : d1 } ; grid point structure contains both per and par domains    
+	endif else begin
 
-    points = replicate( pt, nX, nY )
+    	nCFL = 40 ; i.e., number of grid points in the 1-D domain
+    	
+    	lPar = nCFL * sqrt(kPar * dt / 0.4) 
+    	lPer = nCFL * sqrt(kPer * dt / 0.4);*1000 
 
-    c=contour(psi,x,y,/fill)
+		n1DTrace = 1000
+    	dSPar = lPar / n1dTrace
+    	dSPer = lPer / n1dTrace
 
-    for i=1,nX-2 do begin
-        for j=1,nY-2 do begin
+    	__n = 2*nCFL-1
+    	d1 = { $
+    	    N: __n, $
+    	    x: fltArr(__n), $
+    	    y: fltArr(__n), $
+    	    dS: dSPar, $
+    	    s: fltArr(__n), $
+    	    kx: fltArr(__n), $
+    	    ky: fltArr(__n), $
+    	    L: lpar }   
 
-            points[i,j].x = x[i]
-            points[i,j].y = y[j]
-			points[i,j].par.L = lPar
-			points[i,j].per.L = lPer
-			points[i,j].par.dS = dsPar
-			points[i,j].per.dS = dsPer
-    
-            crash=0 
-            ;if i eq 19 and j eq 14 then crash = 1
+    	pt = { x: 0.0, y:0.0, par : d1, per : d1 } ; grid point structure contains both per and par domains    
 
-            par = points[i,j].par
-            getDomain, x[i],y[j], par, b, bndry, 0, crash=crash
-            points[i,j].par = par
-            
-            per = points[i,j].per
-            getDomain, x[i],y[j], per, b, bndry, 1, crash=crash
-            points[i,j].per = per
+    	points = replicate( pt, nX, nY )
 
-            plotMod = 4 
-            if i mod plotMod eq 0 and j mod plotMod eq 0 then begin
-                    p=plot(points[i,j].per.x,points[i,j].per.y,/over)
-                    p=plot(points[i,j].par.x,points[i,j].par.y,/over)
-            endif 
-        endfor
-    endfor
+		if not noPlot then c=contour(psi,x,y,/fill)
 
+		print, 'Tracing 1-D per & par domains ...'
 
-	nT_im = 100 
+    	for i=1,nX-2 do begin
+    	    for j=1,nY-2 do begin
+
+    	        points[i,j].x = x[i]
+    	        points[i,j].y = y[j]
+				points[i,j].par.L = lPar
+				points[i,j].per.L = lPer
+				points[i,j].par.dS = dsPar
+				points[i,j].per.dS = dsPer
+    	
+    	        crash=0 
+    	        ;if i eq 19 and j eq 14 then crash = 1
+
+    	        par = points[i,j].par
+    	        getDomain, x[i],y[j], par, b, bndry, 0, crash=crash
+    	        points[i,j].par = par
+    	        
+    	        per = points[i,j].per
+    	        getDomain, x[i],y[j], per, b, bndry, 1, crash=crash
+    	        points[i,j].per = per
+
+    	        plotMod = 4 
+    	        if i mod plotMod eq 0 and j mod plotMod eq 0 then begin
+    	                p=plot(points[i,j].per.x,points[i,j].per.y,/over)
+    	                p=plot(points[i,j].par.x,points[i,j].par.y,/over)
+    	        endif 
+    	    endfor
+    	endfor
+
+		save, points, fileName = 'points.sav'
+
+	endelse ; if restorePoints
+
+	nT_im = 100000000L 
 	dT_im = EndTime/nT_im 
 
 	print, 'dt_im / dt : ',dT_im / dt
 
-    c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
+    c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=1,layout=[2,1,1])
 
 	lookAt1DPar = 0
-	lookAt1DPer = 0
-	cubic = 1
+	lookAt1DPer = 1
+	cubic = 0 ; Setting this to be non-zero causes problems. Do not do it :)
     useAnalyticBCs = 1
 	plotMod = 1
     for itr=0, nT_im-1 do begin
-
-    	TSolution = tFac(kPer,nT_im*dt_im) * psi
-
-		TSolution[0,*]=0
-		TSolution[-1,*]=0
-		TSolution[*,0]=0
-		TSolution[*,-1]=0
 
         ; Solve parallel 
 
 		tNow = (itr)*dt_im 
 		tNext = tNow + dt_im/2
+
+    	TSolution = getTa(x2d,y2d,kPer,tNext)
 
         T2_copy = T2
         for i=1,nX-2 do begin ; don't do the boundary pts
@@ -410,10 +425,9 @@ pro shiny
 				if lookAt1DPar then begin
 					_Ti = _T
 
-
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,useAnalyticBCs=useAnalyticBCs,d=d) 
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
-                	__Q  = interpolate ( Q, _i, _j, cubic = 0, /double )
+                	__Q  = interpolate ( Q, _i, _j, cubic = cubic, /double )
 
 					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
 					p=plot(d.s,_Ta,/over,color='g',thick=3)
@@ -423,10 +437,9 @@ pro shiny
 					stop
 
 				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,useAnalyticBCs=useAnalyticBCs,d=d) 
 				endelse
 
-                ;T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
                 T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
 
             endfor
@@ -472,23 +485,32 @@ pro shiny
 				BC = { T_LEnd : [T_LEndNow,T_LEndNex], T_REnd : [T_REndNow,T_REndNex] } 
 
 				if lookAt1DPer then begin
-					_Ti = _T
+				
+					_TaNow = getTa(d.x,d.y,kPer,tNow) 
 
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+					_Ti = _T
+					_T2 = _T
+
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,d=d,useAnalyticBCs=useAnalyticBCs) 
+                	_T2 = heat1d(d.s,_T2,_Q,k,dt,ceil(dt_im/2/dt),tNow,cfl=cfl,plot=0,CN=0,BT=0,BC=BC,d=d,useAnalyticBCs=useAnalyticBCs) 
+
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
-                	__Q  = interpolate ( Q, _i, _j, cubic = 1, /double )
+                	__Q  = interpolate ( Q, _i, _j, cubic = cubic, /double )
 
 					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
 					p=plot(d.s,_Ta,/over,color='g',thick=3)
+					p=plot(d.s,_TaNow,/over,color='orange',thick=2)
+
 					p=plot(d.s,_T,/over)
+					p=plot(d.s,_T2,/over,color='b')
+
 					p=plot(d.s,_Q,layout=[3,1,3],/current)
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
+                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC) 
 				endelse
 
-                ;T2[i,j] = interpol(_T,d.s,0) ; get T at the actual point
                 T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
 
             endfor
@@ -498,11 +520,11 @@ pro shiny
         if itr mod plotMod eq 0 and itr gt 0 then begin
             if itr gt 0 then c.erase
                     print, itr, nT_im    
-                    c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,1])
+                    c=contour(T2,x,y,/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=1,layout=[2,1,1])
                     ;c=contour(T2[1:-2,1:-2]/TSolution[1:-2,1:-2],x[1:-2],y[1:-2],$
-					;	/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
+					;	/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=1,layout=[2,1,2])
                     c=contour(T2-TSolution,x,y,$
-						/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=51,layout=[2,1,2])
+						/fill,/buffer,/current,dimensions=[width*2,height],rgb_table=1,layout=[2,1,2])
 
 
             frame = c.CopyWindow()
@@ -524,12 +546,14 @@ pro shiny
     TSolution = getTa(x2d,y2d,kPer,tNext)
 
     l2 = norm(TSolution-T2,lNorm=2)
-    p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
     r=regress(TSolution[*],T2[*],yfit=fit)
-    p=plot(TSolution[*],fit,/over,$
-        title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
+	if not noPlot then begin
+    	p=plot(TSolution[*],T2[*],symbol="Circle",lineStyle='none')
+    	p=plot(TSolution[*],fit,/over,$
+    	    title='Slope: '+string(r)+'    L2Norm: '+string(l2),color='y')
+	endif
 	print, 'OS Time : ', nT_im * dt_im
-	print, 'Time for information along parallel domain : ', 1/(kPar / (lPar)^2)
+	print, 'Time for information along parallel domain : ', 1/(kPar / (points[0,0].par.l)^2)
 	print, 'Time per parallel iteration : ', dt_im / 2 
 stop
 end
