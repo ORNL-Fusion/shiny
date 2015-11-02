@@ -232,7 +232,7 @@ pro shiny
                 _b = _b/mag(_b)
 
                 D_imjm = get_D(kPer,kPar,_b)
-                q_imjm = -DdotGradT( D_imjm, [dTdx_imjp,dTdy_imjm] )
+                q_imjm = -DdotGradT( D_imjm, [dTdx_imjm,dTdy_imjm] )
 
 
                 divq = (q_ipjp[0] + q_ipjm[0] - q_imjp[0] - q_imjm[0]) / (2*dx) $
