@@ -99,7 +99,7 @@ pro shiny
     _D = max(abs([kPer,kPar]))
     dt = CFL * ( 1.0 / 8.0 ) * (dx^2 + dy^2) / _D
 
-	EndTime = 1d0
+	EndTime = 0.00001d0
     nT = ceil(EndTime/dt);1000000L
 
     width = 400
@@ -297,7 +297,7 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-	restorePoints = 0
+	restorePoints = 1
 
 	if restorePoints then begin
 
@@ -308,7 +308,7 @@ pro shiny
     	nCFL = 40 ; i.e., number of grid points in the 1-D domain
     	
     	lPar = nCFL * sqrt(kPar * dt / 0.4) 
-    	lPer = nCFL * sqrt(kPer * dt / 0.4)*10;00 
+    	lPer = nCFL * sqrt(kPer * dt / 0.4) 
 
 		n1DTrace = 1000
     	dSPar = lPar / n1dTrace
@@ -373,65 +373,26 @@ pro shiny
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=1,layout=[2,1,1])
 
-	lookAt1DPar = 0
+	lookAt1DPar = 1
 	lookAt1DPer = 0
 	cubic = 0 ; Setting this to be non-zero causes problems. Do not do it :)
     useAnalyticBCs = 1
 	plotMod = 1
     for itr=0, nT_im-1 do begin
 
-        ; Solve parallel 
-
 		tNow = (itr)*dt_im 
-		tNext = tNow + dt_im/2
+		tNext = tNow + dt_im
 
     	TSolution = getTa(x2d,y2d,kPer,tNext)
 
-        T2_copy = T2
-        for i=1,nX-2 do begin ; don't do the boundary pts
-            for j=1,nY-2 do begin
+        TiPer = T2
+        TiPar = T2
 
-                d = points[i,j].par
-
-                ; Get T along parallel domain 
-
-				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
-				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
-
-                _T  = interpolate ( T2_copy, _i, _j, cubic = cubic )
-				_Q  = getQ(d.x,d.y)
-
-                k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
-
-				if lookAt1DPar then begin
-					_Ti = _T
-
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,useAnalyticBCs=useAnalyticBCs,d=d) 
-					_Ta = getTa(d.x,d.y,kPer,tNext) 
-                	__Q  = interpolate ( Q, _i, _j, cubic = cubic, /double )
-
-					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
-					p=plot(d.s,_Ta,/over,color='g',thick=3)
-					p=plot(d.s,_T,/over)
-					p=plot(d.s,_Q,layout=[3,1,3],/current)
-					p=plot(d.s,__Q,/over,color='b')
-					stop
-
-				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,useAnalyticBCs=useAnalyticBCs,d=d) 
-				endelse
-
-                T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
-
-            endfor
-        endfor
+        dTPer = fltArr(nX,nY)
+        dTPar = fltArr(nX,nY)
 
         ; Solve perp
 
-		tNow = (itr)*dt_im + dt_im/2
-		tNext = tNow + dt_im/2
-
-        T2_copy = T2
         for i=1,nX-2 do begin ; don't do the boundary pts
             for j=1,nY-2 do begin
 
@@ -442,20 +403,20 @@ pro shiny
 				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
 				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
 
-                _T  = interpolate ( T2_copy, _i, _j, cubic = cubic, /double )
+                _T  = interpolate ( TiPer, _i, _j, cubic = cubic, /double )
 				_Q  = getQ(d.x,d.y)
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
 
-				if lookAt1DPer then begin
+				if lookAt1DPer and i eq nX/4 and j eq nY/4 then begin
 				
 					_TaNow = getTa(d.x,d.y,kPer,tNow) 
 
 					_Ti = _T
 					_T2 = _T
 
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,d=d,useAnalyticBCs=useAnalyticBCs) 
-                	_T2 = heat1d(d.s,_T2,_Q,k,dt,ceil(dt_im/2/dt),tNow,cfl=cfl,plot=0,CN=0,BT=0,BC=BC,d=d,useAnalyticBCs=useAnalyticBCs) 
+                	_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,d=d,useAnalyticBCs=useAnalyticBCs,_debug=0) 
+                	;_T2 = heat1d(d.s,_T2,_Q,k,dt,ceil(dt_im/dt),tNow,cfl=cfl,plot=0,CN=0,BT=0,d=d,useAnalyticBCs=useAnalyticBCs) 
 
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
                 	__Q  = interpolate ( Q, _i, _j, cubic = cubic, /double )
@@ -465,19 +426,63 @@ pro shiny
 					p=plot(d.s,_TaNow,/over,color='orange',thick=2)
 
 					p=plot(d.s,_T,/over)
-					p=plot(d.s,_T2,/over,color='b')
+					;p=plot(d.s,_T2,/over,color='b')
 
 					p=plot(d.s,_Q,layout=[3,1,3],/current)
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-                	_T = heat1d(d.s,_T,_Q,k,dt_im/2,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,BC=BC,d=d,useAnalyticBCs=useAnalyticBCs) 
+                	_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,d=d,useAnalyticBCs=useAnalyticBCs) 
 				endelse
 
-                T2[i,j] = _T[n_elements(d.s)/2] ; get T at the actual point
+                dTPer[i,j] = _T[n_elements(d.s)/2] - TiPer[i,j]; get dT update at the actual point
+            endfor
+        endfor
+
+        ; Solve parallel 
+
+        for i=1,nX-2 do begin ; don't do the boundary pts
+            for j=1,nY-2 do begin
+
+                d = points[i,j].par
+
+                ; Get T along parallel domain 
+
+				_i = ( d.x - x[0] ) / (x[-1]-x[0]) * (nX-1.0)
+				_j = ( d.y - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
+
+                _T  = interpolate ( TiPar+dTPer, _i, _j, cubic = cubic )
+				_Q  = getQ(d.x,d.y)*0 ; Source is applied only to the perp solve
+
+                k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
+
+				if lookAt1DPar then begin
+					_Ti = _T
+                    _TiBL  = bilinear ( TiPar+dTPer, _i, _j )
+
+                	_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,useAnalyticBCs=useAnalyticBCs,d=d,_debug=0) 
+					_Ta = getTa(d.x,d.y,kPer,tNext) 
+                	__Q  = interpolate ( Q, _i, _j, cubic = cubic, /double ) * 0
+
+					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
+                    p=plot(d.s,_TiBL,/over,color='orange',thick=2)
+					p=plot(d.s,_Ta,/over,color='g',thick=3)
+					p=plot(d.s,_T,/over)
+					p=plot(d.s,_Q,layout=[3,1,3],/current)
+					p=plot(d.s,__Q,/over,color='b')
+
+					stop
+
+				endif else begin
+					_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,useAnalyticBCs=useAnalyticBCs,d=d) 
+				endelse
+
+                dTPar[i,j] = _T[n_elements(d.s)/2] - TiPar[i,j]; get dT update at the actual point
 
             endfor
         endfor
+
+        T2 = T2 + dTPer + dTPar
 
         ; plot time evolving solution at a subset of times
         if itr mod plotMod eq 0 and itr gt 0 then begin
