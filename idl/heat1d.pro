@@ -66,8 +66,8 @@ d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug
 				TLNex = getTa(d.x[0],d.y[0],1,tNow+_t*dt+dt)
 				TRNex = getTa(d.x[-1],d.y[-1],1,tNow+_t*dt+dt)
 			endif else begin
-				TLNex = 0
-				TRNex = 0
+				TLNex = T[0]
+				TRNex = T[-1]
 			endelse
 
             if keyword_set(debug) then stop	
@@ -97,7 +97,11 @@ d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug
 	; Explicit Euler temporal scheme
 
 		_cfl = dt * max(k) / dS^2
-		if _cfl gt 0.5 then stop
+		if _cfl gt 0.5 then begin
+            print, 'dt too large, CFL violated, reduce dt'
+            print, 'CFL: ',_CFL
+            stop
+        endif
 
 		for _t = 0, nT - 1 do begin
 

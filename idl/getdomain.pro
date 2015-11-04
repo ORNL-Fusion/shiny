@@ -12,6 +12,8 @@ pro getDomain, x0, y0, d, _b, bndry, perp, crash=crash
 	_line1 = dlg_fieldLineTrace_xy(_b,ThisPoint, dir = -1, dS=d.dS, nS=_n, perp=perp, analytic_b=1 )
 	_line2 = dlg_fieldLineTrace_xy(_b,ThisPoint, dir = +1, dS=d.dS, nS=_n, perp=perp, analytic_b=1 )
 
+    ;if perp then stop
+
 	fLine_XY = [[reverse(_line1[*,0:-2],2)],[_line2[*,1:-2]]]
     	fLine_XY = fLine_XY[0:1,*]
 	_s = fIndGen(_n)*d.dS

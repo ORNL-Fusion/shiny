@@ -2,8 +2,8 @@ pro shiny
 
     resolve_routine, 'interpb', /either, /compile_full_file
 
-    nX = 40 
-    nY = 40 
+    nX = 32 
+    nY = 32 
 
 	noPlot = 0		
 
@@ -297,7 +297,7 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-	restorePoints = 1
+	restorePoints = 0
 
 	if restorePoints then begin
 
@@ -305,10 +305,10 @@ pro shiny
 
 	endif else begin
 
-		nCFL = 40 ; i.e., number of grid points in the 1-D domain
+		nCFL = 55 ; i.e., number of grid points in the 1-D domain
 		
-		lPar = nCFL * sqrt(kPar * dt / 0.4) 
-		lPer = nCFL * sqrt(kPer * dt / 0.4)*10 
+		lPar = 1.0;nCFL * sqrt(kPar * dt / 0.4) 
+		lPer = 2.0;nCFL * sqrt(kPer * dt / 0.4)
 
 		n1DTrace = 300
 		dSPar = lPar / n1dTrace
@@ -373,10 +373,10 @@ pro shiny
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=1,layout=[2,1,1])
 
-	lookAt1DPar = 0
-	lookAt1DPer = 0
+	lookAt1DPar = 1
+	lookAt1DPer = 1
 	cubic = 0 ; Setting this to be non-zero causes problems. Do not do it :)
-    useAnalyticBCs = 1
+    useAnalyticBCs = 0
 	plotMod = 1
     for itr=0, nT_im-1 do begin
 
@@ -408,7 +408,7 @@ pro shiny
 
                 k = fltArr(n_elements(d.s)) + kPer ; diffusion coefficent
 
-				if lookAt1DPer and i eq nX/4 and j eq nY/4 then begin
+				if lookAt1DPer and i eq nX/3 and j eq nY/4 then begin
 				
 					_TaNow = getTa(d.x,d.y,kPer,tNow) 
 
@@ -435,7 +435,9 @@ pro shiny
 					_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,d=d,useAnalyticBCs=useAnalyticBCs) 
 				endelse
 
-                TPer[i,j] = _T[n_elements(d.s)/2]; get T at the actual point
+                ;TPer[i,j] = _T[n_elements(d.s)/2]; get T at the actual point
+                TPer[i,j] = interpol(_T,d.s,0) ; get T at the actual point
+
             endfor
         endfor
 
@@ -457,18 +459,26 @@ pro shiny
 
                 k = fltArr(n_elements(d.s)) + kPar ; diffusion coefficent
 
-				if lookAt1DPar then begin
+				if lookAt1DPar and i eq nX/4 and j eq nY/4 then begin
 					_Ti = _T
-                    _TiBL  = (bilinear ( TiPar+dTPer, transpose(_i), transpose(_j) ))[*]
+                    _T2 = _T
+                    _TiBL  = (bilinear ( TPer, transpose(_i), transpose(_j) ))[*]
 
-					_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,useAnalyticBCs=useAnalyticBCs,d=d,_debug=0) 
+					_T = heat1d(d.s,_T,_Q,k,dt_im/1000,1000,tNow,cfl=cfl,plot=0,CN=1,BT=0,useAnalyticBCs=useAnalyticBCs,d=d,_debug=0) 
+					;_T2 = heat1d(d.s,_T2,_Q,k,dt_im/2000d0,2000,tNow,cfl=cfl,plot=0,CN=0,BT=0,useAnalyticBCs=useAnalyticBCs,d=d,_debug=0) 
+
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
+					_Tai = getTa(d.x,d.y,kPer,tNow) 
+
 					__Q  = interpolate ( Q, _i, _j, cubic = cubic, /double ) * 0
 
 					p=plot(d.s,_Ti,layout=[2,1,1],color='r',thick=3)
+					;p=plot(d.s,_Tai,/over,color='y',thick=2)
+
                     p=plot(d.s,_TiBL,/over,color='orange',thick=2)
 					p=plot(d.s,_Ta,/over,color='g',thick=3)
 					p=plot(d.s,_T,/over)
+					;p=plot(d.s,_T2,/over,color='r')
 					p=plot(d.s,_Q,layout=[3,1,3],/current)
 					p=plot(d.s,__Q,/over,color='b')
 
@@ -478,7 +488,7 @@ pro shiny
 					_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,useAnalyticBCs=useAnalyticBCs,d=d) 
 				endelse
 
-                TPar[i,j] = _T[n_elements(d.s)/2] ; Extract the s=0 element
+                TPar[i,j] = interpol(_T,d.s,0) ; get T at the actual point
 
             endfor
         endfor
