@@ -60,15 +60,22 @@ ExponentiallyIncreasing=ExponentiallyIncreasing
 			EI_beta = newton(EI_betaGuess,'ei_beta_rhs',/double,stepmax=10,check=local)
 			if local gt 0 then stop
 			EI_dt = DblArr(EI_M)
-			tmp = 0
+			TotalTimeStep = 0
 			k1 = dt*(EI_beta-1d0)/(EI_beta^EI_M-1d0)
 			for ee = 0,EI_M-1 do begin
-				tmp = tmp + EI_beta^ee*k1
-				EI_dt[ee] = tmp
+				EI_dt[ee] = EI_beta^ee*k1
+				TotalTimeStep = TotalTimeStep + EI_dt[ee]
 			endfor
 
 			dTArr = EI_dt
-
+			EI_bMu = EI_dt / dS^2 * EI_b
+			if EI_bMu[0] gt 0.5 then begin
+				print, 'EI_dt/dt[0]: ',EI_dt[0] / dt
+				print, 'TotalTimeStep/dt: ', TotalTimeStep / dt
+				print, 'bMu[0]: ', EI_bMu[0]
+				print, 'Time step too large, even for EI method'
+				stop
+			endif
 		endif
 
 		for _t = 0, nT-1 do begin

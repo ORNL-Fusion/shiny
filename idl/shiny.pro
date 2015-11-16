@@ -366,19 +366,26 @@ pro shiny
 
 	endelse ; if restorePoints
 
-	nT_im = 20000 
+	nT_im = 1000 
 	dT_im = EndTime/nT_im 
 
 	print, 'dt_im / dt : ',dT_im / dt
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=1,layout=[2,1,1])
 
-	lookAt1DPar = 1
-	lookAt1DPer = 1
+	lookAt1DPar = 0
+	lookAt1DPer = 0
 	cubic = 0 ; Setting this to be non-zero causes problems. Do not do it :)
     useAnalyticBCs = 1
 	plotMod = 1
-	nSub = 10
+	ExponentiallyIncreasingScheme = 1
+	nSub = 100
+	if ExponentiallyIncreasingScheme then begin
+		this_dt = dT_im
+	endif else begin
+		this_dt = dT_im/nSub
+	endelse
+
     for itr=0, nT_im-1 do begin
 
 		tNow = (itr)*dt_im 
@@ -416,10 +423,11 @@ pro shiny
 					_Ti = _T
 					_T2 = _T
 
-					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,d=d,$
 							useAnalyticBCs=useAnalyticBCs,_debug=0,$
-							AnalyticBCTime = tNow+dt_im) 
+							AnalyticBCTime = tNow+dt_im, $
+							ExponentiallyIncreasing=ExponentiallyIncreasingScheme)
 					;_T2 = heat1d(d.s,_T2,_Q,k,dt,ceil(dt_im/dt),tNow,cfl=cfl,plot=0,CN=0,BT=0,d=d,useAnalyticBCs=useAnalyticBCs) 
 
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
@@ -436,10 +444,11 @@ pro shiny
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,d=d,$
 							useAnalyticBCs=useAnalyticBCs, $ 
-							AnalyticBCTime = tNow+dt_im) 
+							AnalyticBCTime = tNow+dt_im,$
+							ExponentiallyIncreasing=ExponentiallyIncreasingScheme) 
 				endelse
 
                 ;TPer[i,j] = _T[n_elements(d.s)/2]; get T at the actual point
@@ -471,11 +480,11 @@ pro shiny
                     _T2 = _T
                     _TiBL  = (bilinear ( TPer, transpose(_i), transpose(_j) ))[*]
 
-					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,$
 							useAnalyticBCs=useAnalyticBCs,d=d,_debug=0, $
 							AnalyticBCTime = tNow+dt_im, $
-							ExponentiallyIncreasing=1) 
+							ExponentiallyIncreasing=ExponentiallyIncreasingScheme) 
 					;_T2 = heat1d(d.s,_T2,_Q,k,dt_im/2000d0,2000,tNow,cfl=cfl,plot=0,CN=0,BT=0,useAnalyticBCs=useAnalyticBCs,d=d,_debug=0) 
 
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
@@ -496,10 +505,11 @@ pro shiny
 					stop
 
 				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,$
 							useAnalyticBCs=useAnalyticBCs,d=d,$ 
-							AnalyticBCTime = tNow+dt_im) 
+							AnalyticBCTime = tNow+dt_im, $
+							ExponentiallyIncreasing=ExponentiallyIncreasingScheme) 
 				endelse
 
                 TPar[i,j] = interpol(_T,d.s,0) ; get T at the actual point
