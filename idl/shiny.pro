@@ -297,7 +297,7 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-	restorePoints = 0
+	restorePoints = 1
 
 	if restorePoints then begin
 
@@ -305,12 +305,12 @@ pro shiny
 
 	endif else begin
 
-		nCFL = 55 ; i.e., number of grid points in the 1-D domain
+		nCFL = 15 ; i.e., number of grid points in the 1-D domain
 		
 		lPar = 1.0;nCFL * sqrt(kPar * dt / 0.4) 
 		lPer = 2.0;nCFL * sqrt(kPer * dt / 0.4)
 
-		n1DTrace = 300
+		n1DTrace = 500
 		dSPar = lPar / n1dTrace
 		dSPer = lPer / n1dTrace
 
@@ -366,7 +366,7 @@ pro shiny
 
 	endelse ; if restorePoints
 
-	nT_im = 1000 
+	nT_im = 20000 
 	dT_im = EndTime/nT_im 
 
 	print, 'dt_im / dt : ',dT_im / dt
@@ -376,8 +376,9 @@ pro shiny
 	lookAt1DPar = 1
 	lookAt1DPer = 1
 	cubic = 0 ; Setting this to be non-zero causes problems. Do not do it :)
-    useAnalyticBCs = 0
+    useAnalyticBCs = 1
 	plotMod = 1
+	nSub = 10
     for itr=0, nT_im-1 do begin
 
 		tNow = (itr)*dt_im 
@@ -415,7 +416,10 @@ pro shiny
 					_Ti = _T
 					_T2 = _T
 
-					_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,d=d,useAnalyticBCs=useAnalyticBCs,_debug=0) 
+					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+							cfl=cfl,plot=0,CN=1,BT=0,d=d,$
+							useAnalyticBCs=useAnalyticBCs,_debug=0,$
+							AnalyticBCTime = tNow+dt_im) 
 					;_T2 = heat1d(d.s,_T2,_Q,k,dt,ceil(dt_im/dt),tNow,cfl=cfl,plot=0,CN=0,BT=0,d=d,useAnalyticBCs=useAnalyticBCs) 
 
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
@@ -432,7 +436,10 @@ pro shiny
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,d=d,useAnalyticBCs=useAnalyticBCs) 
+					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+							cfl=cfl,plot=0,CN=1,BT=0,d=d,$
+							useAnalyticBCs=useAnalyticBCs, $ 
+							AnalyticBCTime = tNow+dt_im) 
 				endelse
 
                 ;TPer[i,j] = _T[n_elements(d.s)/2]; get T at the actual point
@@ -464,7 +471,11 @@ pro shiny
                     _T2 = _T
                     _TiBL  = (bilinear ( TPer, transpose(_i), transpose(_j) ))[*]
 
-					_T = heat1d(d.s,_T,_Q,k,dt_im/1000,1000,tNow,cfl=cfl,plot=0,CN=1,BT=0,useAnalyticBCs=useAnalyticBCs,d=d,_debug=0) 
+					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+							cfl=cfl,plot=0,CN=1,BT=0,$
+							useAnalyticBCs=useAnalyticBCs,d=d,_debug=0, $
+							AnalyticBCTime = tNow+dt_im, $
+							ExponentiallyIncreasing=1) 
 					;_T2 = heat1d(d.s,_T2,_Q,k,dt_im/2000d0,2000,tNow,cfl=cfl,plot=0,CN=0,BT=0,useAnalyticBCs=useAnalyticBCs,d=d,_debug=0) 
 
 					_Ta = getTa(d.x,d.y,kPer,tNext) 
@@ -485,7 +496,10 @@ pro shiny
 					stop
 
 				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,dt_im,1,tNow,cfl=cfl,plot=0,CN=1,BT=0,useAnalyticBCs=useAnalyticBCs,d=d) 
+					_T = heat1d(d.s,_T,_Q,k,dt_im/nSub,nSub,tNow,$
+							cfl=cfl,plot=0,CN=1,BT=0,$
+							useAnalyticBCs=useAnalyticBCs,d=d,$ 
+							AnalyticBCTime = tNow+dt_im) 
 				endelse
 
                 TPar[i,j] = interpol(_T,d.s,0) ; get T at the actual point

@@ -1,6 +1,8 @@
 function heat1d, s, T, Q, k, dt, nT, tNow, cfl = _cfl, plot = _plot, $
 CN=CN, BT=BT, $
-d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug 
+d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug, $
+analyticBCTime=analyticBCTime, $
+ExponentiallyIncreasing=ExponentiallyIncreasing 
 
 	if keyword_set(CN) then useCN=CN else useCN = 0	
 	if keyword_set(BT) then useBT=BT else useBT = 0	
@@ -15,6 +17,10 @@ d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug
 	if iiBadKCnt gt 0 then stop
 	
 	dS = s[1]-s[0]
+
+	dTArr = FltArr(nT)+dT
+	tNowArr = tNow + IntArr(nT)*dT 
+	tNexArr = tNowArr + dT
 
 	if keyword_set(_plot) then p=plot(s,T)
 
@@ -31,40 +37,76 @@ d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug
 		A = fltArr(nX,nX)
 		B = fltArr(nX)
 
-		if useCN then begin
-
-            ; http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
-
-			alp = k[inr]*dt/(ds^2)
-			bb = -alp
-			cc = -alp
-			aa = 2*(1+alp)
-
-			A[inr,inr+1] = bb 
-			A[inr,inr-1] = cc 
-			A[inr,inr] = aa 
-
-		endif else begin
-
-            ; http://www.nada.kth.se/~jjalap/numme/FDheat.pdf         
-
-			cc = -k[inr]/ds^2 
-			bb = 1/dt + 2*k[inr]/ds^2
-			aa = cc 
-
-			A[inr,inr+1] = cc
-			A[inr,inr] = bb 
-			A[inr,inr-1] = aa
-
-		endelse
-
 		; Fill matrix
+
+		if keyword_set(ExponentiallyIncreasing) then begin
+
+			; See "Five Ways of Reducing the Crank–Nicolson Oscillations"
+			; by Osterby (2003) that describes how the problems of oscillations
+			; stem from the initial condition, and that you can take several small
+			; initial timesteps to damp them, then ramp up to your desired timestep.
+			; The value of bMu below should be <0.5 for several timesteps to start.
+
+			; https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=4&cad=rja&uact=8&ved=0CDkQFjADahUKEwif9pLAppXJAhVI2T4KHZTWCuw&url=http%3A%2F%2Flink.springer.com%2Farticle%2F10.1023%252FB%253ABITN.0000009942.00540.94&usg=AFQjCNEYUfFh7y1sYGLloQ3a_s9h8ELPuA&sig2=Jhg-ABcFBF5cPtTSImh57g
+			
+			mu = dt / dS^2
+			bMu = max(k * mu) 
+
+			common EI, EI_M, EI_b, EI_mu
+			EI_betaGuess = 2d0
+			EI_M = nT
+			EI_b = max(k)
+			EI_mu = mu
+			EI_beta = newton(EI_betaGuess,'ei_beta_rhs',/double,stepmax=10,check=local)
+			if local gt 0 then stop
+			EI_dt = DblArr(EI_M)
+			tmp = 0
+			k1 = dt*(EI_beta-1d0)/(EI_beta^EI_M-1d0)
+			for ee = 0,EI_M-1 do begin
+				tmp = tmp + EI_beta^ee*k1
+				EI_dt[ee] = tmp
+			endfor
+
+			dTArr = EI_dt
+
+		endif
 
 		for _t = 0, nT-1 do begin
 
+			if useCN then begin
+
+        	    ; http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
+
+				alp = k[inr]*dtArr[_t]/(ds^2)
+				bb = -alp
+				cc = -alp
+				aa = 2*(1+alp)
+
+				A[inr,inr+1] = bb 
+				A[inr,inr-1] = cc 
+				A[inr,inr] = aa 
+
+			endif else begin
+
+        	    ; http://www.nada.kth.se/~jjalap/numme/FDheat.pdf         
+
+				cc = -k[inr]/ds^2 
+				bb = 1/dtArr[_t] + 2*k[inr]/ds^2
+				aa = cc 
+
+				A[inr,inr+1] = cc
+				A[inr,inr] = bb 
+				A[inr,inr-1] = aa
+
+			endelse
+
 			if keyword_set(useAnalyticBCs) then begin
-				TLNex = getTa(d.x[0],d.y[0],1,tNow+_t*dt+dt)
-				TRNex = getTa(d.x[-1],d.y[-1],1,tNow+_t*dt+dt)
+				TLNex = getTa(d.x[0],d.y[0],1,tNexArr[_t])
+				TRNex = getTa(d.x[-1],d.y[-1],1,tNexArr[_t])
+				if keyword_set(AnalyticBCTime) then begin
+					TLNex = getTa(d.x[0],d.y[0],1,AnalyticBCTime)
+					TRNex = getTa(d.x[-1],d.y[-1],1,AnalyticBCTime)
+				endif
 			endif else begin
 				TLNex = T[0]
 				TRNex = T[-1]
@@ -73,9 +115,9 @@ d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug
             if keyword_set(debug) then stop	
 	
 			if useCN then begin
-				dd = alp * T[inr+1] + 2*(1-alp) * T[inr] + alp*T[inr-1] + 2*dt*Q[inr]
+				dd = alp * T[inr+1] + 2*(1-alp) * T[inr] + alp*T[inr-1] + 2*dtArr[_t]*Q[inr]
 			endif else begin
-				dd = 1/dt * T[inr] + Q[inr]				
+				dd = 1/dtArr[_t] * T[inr] + Q[inr]				
 			endelse
 
 			; See http://people.sc.fsu.edu/~jpeterson/5-CrankNicolson.pdf
@@ -106,8 +148,12 @@ d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug
 		for _t = 0, nT - 1 do begin
 
 			if keyword_set(useAnalyticBCs) then begin
-				T[0] = getTa(d.x[0],d.y[0],1,tNow+_t*dt+dt)
-				T[-1] = getTa(d.x[-1],d.y[-1],1,tNow+_t*dt+dt)
+				T[0] = getTa(d.x[0],d.y[0],1,tNexArr[_t])
+				T[-1] = getTa(d.x[-1],d.y[-1],1,tNexArr[_t])
+				if keyword_set(AnalyticBCTime) then begin		
+					T[0] = getTa(d.x[0],d.y[0],1,AnalyticBCTime)
+					T[-1] = getTa(d.x[-1],d.y[-1],1,AnalyticBCTime)
+				endif
 			endif
 
 			T[1:-2] = $
@@ -122,3 +168,4 @@ d=d, useAnalyticBCs=useAnalyticBCs, _debug=debug
 	return, T
 
 end
+
