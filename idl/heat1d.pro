@@ -90,8 +90,8 @@ ExponentiallyIncreasing=ExponentiallyIncreasing
 				aa = 2*(1+alp)
 
 				A[inr,inr+1] = bb 
-				A[inr,inr-1] = cc 
 				A[inr,inr] = aa 
+				A[inr,inr-1] = cc 
 
 			endif else begin
 
@@ -133,7 +133,13 @@ ExponentiallyIncreasing=ExponentiallyIncreasing
 			B[1] = B[1] + alp[0]*TLNex
 			B[-2] = B[-2] + alp[-1]*TRNex
 	
-			TNew = la_linear_equation(A[1:-2,1:-2],B[1:-2],/double,status=status)
+			;TNew = la_linear_equation(A[1:-2,1:-2],B[1:-2],/double,status=status)
+			tri_AL = cc[0:-2] 
+			tri_A  = aa  
+			tri_AU = bb[1:-1]
+			la_tridc, tri_AL, tri_A, tri_AU, u2, index, status=status
+			TNew = la_trisol(tri_AL, tri_A, tri_AU,u2,index,B[1:-2])
+
 			if status ne 0 then stop
             if keyword_set(debug) then stop	
 

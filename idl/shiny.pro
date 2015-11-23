@@ -3,7 +3,7 @@ pro shiny
     resolve_routine, 'interpb', /either, /compile_full_file
 
     nX = 32 
-    nY = 32 
+    nY = 32  
 
 	noPlot = 0		
 
@@ -297,7 +297,10 @@ pro shiny
 
     ; CFL = kPar * dt / dS^2
 
-	restorePoints = 1
+	nT_im = 1000L 
+	dT_im = EndTime/nT_im 
+
+	restorePoints = 0
 
 	if restorePoints then begin
 
@@ -307,10 +310,10 @@ pro shiny
 
 		nCFL = 15 ; i.e., number of grid points in the 1-D domain
 		
-		lPar = 1.0;nCFL * sqrt(kPar * dt / 0.4) 
+		lPar = 5*sqrt(kPar * dt_im / 0.4) 
 		lPer = 2.0;nCFL * sqrt(kPer * dt / 0.4)
 
-		n1DTrace = 500
+		n1DTrace = 5000
 		dSPar = lPar / n1dTrace
 		dSPer = lPer / n1dTrace
 
@@ -366,24 +369,24 @@ pro shiny
 
 	endelse ; if restorePoints
 
-	nT_im = 1000 
-	dT_im = EndTime/nT_im 
-
 	print, 'dt_im / dt : ',dT_im / dt
 
     c=contour(T2,x,y,/fill,/buffer,dimensions=[width*2,height],rgb_table=1,layout=[2,1,1])
 
 	lookAt1DPar = 0
 	lookAt1DPer = 0
-	cubic = 0 ; Setting this to be non-zero causes problems. Do not do it :)
+	cubic = -0.5 ; Setting this to be non-zero causes problems. Do not do it :)
     useAnalyticBCs = 1
 	plotMod = 1
 	ExponentiallyIncreasingScheme = 1
-	nSub = 100
+	nSubPer = 10
+	nSubPar = 10
 	if ExponentiallyIncreasingScheme then begin
-		this_dt = dT_im
+		this_dtPer = dT_im
+		this_dtPar = dT_im
 	endif else begin
-		this_dt = dT_im/nSub
+		this_dtPer = dT_im/nSubPer
+		this_dtPar = dT_im/nSubPar
 	endelse
 
     for itr=0, nT_im-1 do begin
@@ -423,7 +426,7 @@ pro shiny
 					_Ti = _T
 					_T2 = _T
 
-					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dtPer,nSubPer,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,d=d,$
 							useAnalyticBCs=useAnalyticBCs,_debug=0,$
 							AnalyticBCTime = tNow+dt_im, $
@@ -444,7 +447,7 @@ pro shiny
 					p=plot(d.s,__Q,/over,color='b')
 					stop
 				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dtPer,nSubPer,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,d=d,$
 							useAnalyticBCs=useAnalyticBCs, $ 
 							AnalyticBCTime = tNow+dt_im,$
@@ -480,7 +483,7 @@ pro shiny
                     _T2 = _T
                     _TiBL  = (bilinear ( TPer, transpose(_i), transpose(_j) ))[*]
 
-					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dtPar,nSubPar,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,$
 							useAnalyticBCs=useAnalyticBCs,d=d,_debug=0, $
 							AnalyticBCTime = tNow+dt_im, $
@@ -505,7 +508,7 @@ pro shiny
 					stop
 
 				endif else begin
-					_T = heat1d(d.s,_T,_Q,k,this_dt,nSub,tNow,$
+					_T = heat1d(d.s,_T,_Q,k,this_dtPar,nSubPar,tNow,$
 							cfl=cfl,plot=0,CN=1,BT=0,$
 							useAnalyticBCs=useAnalyticBCs,d=d,$ 
 							AnalyticBCTime = tNow+dt_im, $
@@ -536,7 +539,8 @@ pro shiny
 			_j = ( 0 - y[0] ) / (y[-1]-y[0]) * (nY-1.0)
 
 			T_00 = interpolate ( T2, _i, _j, cubic = cubic, /double )
-			print, 1d0/T_00 - kPer
+			T_00a = getTa(0.0,0.0,kPer,tNext)
+			print, 1d0/T_00 - kPer, ((1d0/T_00-kPer)-(1d0/T_00a-kPer))/(1d0/T_00a-kPer)
 
         endif
 
